@@ -12,12 +12,12 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  // Sample images for demo if no images provided
+  // Case study images for hero carousel
   const defaultImages = [
-    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
-    'https://images.unsplash.com/photo-1454391304352-2bf4678b1a7a?w=800&h=600&fit=crop',
-    'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?w=800&h=600&fit=crop',
-    'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&h=600&fit=crop',
+    '/assets/hero-carousell-image/Case study 1.jpg',
+    '/assets/hero-carousell-image/Case study 2.jpg',
+    '/assets/hero-carousell-image/Case study 3.jpg',
+    '/assets/hero-carousell-image/Case study 4.jpg',
   ];
 
   const galleryImages = images.length > 0 ? images : defaultImages;
@@ -37,10 +37,13 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
 
     // Calculate transform based on position
     const translateX = position * 90; // 110% spacing between images
-    const scale = position === 0 ? 1 : 0.6;
+    const scale = position === 0 ? 1 : 0.7;
     const opacity = Math.abs(position) <= 1 ? 1 : 0;
     const zIndex = position === 0 ? 20 : 10 - Math.abs(position);
     
+    const width = 800; // Change this value to adjust center image size
+    const height = 500; // Change this value to adjust center image height
+
     return {
       transform: `translateX(${translateX}%) scale(${scale})`,
       opacity: opacity,
@@ -49,12 +52,12 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
       position: 'absolute' as const,
       left: '50%',
       top: '50%',
-      width: '700px',
+      width: `${width}px`,
       maxWidth: '80vw',
-      height: '450px',
+      height: `${height}px`,
       transformOrigin: 'center',
-      marginLeft: '-350px',
-      marginTop: '-225px',
+      marginLeft: `-${width / 2}px`,
+      marginTop: `-${height / 2}px`,
       cursor: position !== 0 ? 'pointer' : 'default',
       pointerEvents: Math.abs(position) > 1 ? ('none' as const) : ('auto' as const)
     };
@@ -160,7 +163,7 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
                 style={style}
                 onClick={() => handleImageClick(index)}
               >
-                <div className="relative w-full h-full rounded-lg overflow-hidden shadow-2xl">
+                <div className="relative w-full h-full rounded-lg overflow-hidden">
                   <img
                     src={image}
                     alt={`Gallery image ${index + 1}`}

@@ -2,22 +2,13 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#FAFBFD] relative overflow-hidden">
+    <div className="min-h-screen bg-[#FAFBFD] relative overflow-hidden flex flex-col">
       {/* Top Curved Section */}
-      <div className="absolute top-0 left-0 w-full border">
-        <Image
-          src="/assets/top-curved-section.svg"
-          alt=""
-          width={1152}
-          height={23}
-          className="w-full h-auto"
-        />
-      </div>
+      <div className="h-6 bg-[#F44336] rounded-b-[4.5rem] min-h-6">&nbsp;</div>
 
       {/* Main Content */}
-      <div className="relative z-10 pt-8 pb-8 px-4 sm:px-8 md:px-16 lg:px-24">
+      <div className="relative z-10 pt-8 pb-8 px-4 sm:px-8 md:px-16 lg:px-24 flex-grow">
         <div className="max-w-7xl mx-auto">
-
           <div className="grid lg:grid-cols-2 gap-4 lg:gap-8 items-center min-h-[calc(100vh-160px)]">
 
             {/* Left Side - Login Form */}
@@ -102,16 +93,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Bottom Curved Section */}
-      <div className="absolute bottom-0 left-0 w-full border">
-        <Image
-          src="/assets/bottom-curved-section.svg"
-          alt=""
-          width={1152}
-          height={23}
-          className="w-full h-auto"
-        />
-      </div>
+      {/* Bottom curved section - always at bottom */}
+      <div className="h-6 bg-[#F44336] rounded-t-[3.5rem] min-h-6">&nbsp;</div>
     </div>
+    
   );
 }

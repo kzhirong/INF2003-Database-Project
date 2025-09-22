@@ -11,12 +11,7 @@ export default function Landing() {
       <main className="py-8">
         {/* Photo Gallery Section - Full Width */}
         <section className="mb-12">
-          <PhotoGallery images={[
-            "/assets/welcome-icons.svg",
-            "/assets/SiT.png",
-            "/assets/top-curved-section.svg",
-            "/assets/bottom-curved-section.svg"
-          ]} />
+          <PhotoGallery />
         </section>
 
         {/* Other Content */}
