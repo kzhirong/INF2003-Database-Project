@@ -36,13 +36,13 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
     }
 
     // Calculate transform based on position
-    const translateX = position * 90; // 110% spacing between images
-    const scale = position === 0 ? 1 : 0.7;
+    const translateX = position * 60; // Decreased spacing between images
+    const scale = position === 0 ? 1 : 0.5;
     const opacity = Math.abs(position) <= 1 ? 1 : 0;
     const zIndex = position === 0 ? 20 : 10 - Math.abs(position);
     
-    const width = 800; // Change this value to adjust center image size
-    const height = 500; // Change this value to adjust center image height
+    const width = 1200; // Change this value to adjust center image size
+    const height = 680; // Change this value to adjust center image height
 
     return {
       transform: `translateX(${translateX}%) scale(${scale})`,
@@ -146,7 +146,7 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
     <div className="w-ful">
       {/* Main carousel container */}
       <div 
-        className="relative h-[450px] md:h-[500px] lg:h-[550px] overflow-hidden"
+        className="relative h-[505px] md:h-[700px] lg:h-[800px] overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -163,7 +163,7 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
                 style={style}
                 onClick={() => handleImageClick(index)}
               >
-                <div className="relative w-full h-full rounded-lg overflow-hidden">
+                <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
                   <img
                     src={image}
                     alt={`Gallery image ${index + 1}`}
