@@ -41,8 +41,8 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
     const opacity = Math.abs(position) <= 1 ? 1 : 0;
     const zIndex = position === 0 ? 20 : 10 - Math.abs(position);
     
-    const width = 1200; // Change this value to adjust center image size
-    const height = 680; // Change this value to adjust center image height
+    const width = 960; // Change this value to adjust center image size
+    const height = 544; // Change this value to adjust center image height
 
     return {
       transform: `translateX(${translateX}%) scale(${scale})`,
@@ -146,7 +146,7 @@ const PhotoGallery = ({ images = [] }: PhotoGalleryProps) => {
     <div className="w-ful">
       {/* Main carousel container */}
       <div 
-        className="relative h-[505px] md:h-[700px] lg:h-[800px] overflow-hidden"
+        className="relative h-[505px] md:h-[200px] lg:h-[650px] overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

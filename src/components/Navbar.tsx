@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Navbar() {
   return (
@@ -40,14 +41,16 @@ export default function Navbar() {
           </div>
 
           {/* Dashboard Button */}
-          <button className="bg-[#F44336] hover:bg-[#FF8A80] text-[#FFF] font-semibold px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2">
-            {/* Profile Icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            DASHBOARD
-          </button>
+          <Link href="/dashboard">
+            <button className="bg-[#F44336] hover:bg-[#FF8A80] text-[#FFF] font-semibold px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2">
+              {/* Profile Icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              DASHBOARD
+            </button>
+          </Link>
         </div>
       </div>
     </nav>

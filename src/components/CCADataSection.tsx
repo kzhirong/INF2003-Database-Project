@@ -12,8 +12,8 @@ const CCADataSection = ({
     { number: "150+", label: "Active CCAs" },
     { number: "2,500", label: "Students Involved" },
     { number: "95%", label: "Satisfaction Rate" },
-    { number: "100", label:"James"},
-    { number: "101", label: "James gay partner"}
+    { number: "39", label:"Leadership"},
+    { number: "10", label: "SMC"}
   ]
 }: CCADataSectionProps) => {
   return (
@@ -34,8 +34,7 @@ const CCADataSection = ({
         <div className="absolute inset-0 flex items-center justify-center">
           {/* Main content area positioned over the white rectangle */}
           <div
-            className="relative flex items-center justify-center w-full max-w-[83%] px-2 sm:px-6 md:px-8"
-            style={{
+              className="relative flex items-center justify-center w-full max-w-[83%] px-2 sm:px-6 md:px-8 mr-6 sm:mr-12 md:mr-17"            style={{
               top: '5%',
               left: '0%'
             }}
