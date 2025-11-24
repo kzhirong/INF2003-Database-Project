@@ -1,17 +1,20 @@
-import { withAuth } from "next-auth/middleware";
+import { type NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
 
-export default withAuth({
-  pages: {
-    signIn: "/", // Redirect to login page if not authenticated
-  },
-});
+export async function middleware(request: NextRequest) {
+  return await updateSession(request)
+}
 
 export const config = {
-  // Protect all routes except the login page
   matcher: [
-    "/dashboard/:path*",  // Dashboard and all sub-pages
-    "/news/:path*",       // News pages and news detail pages
-    "/ccas/:path*",       // CCAs pages
-    "/landing",           // Landing page
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - / (login page)
+     * Feel free to modify this pattern to include more paths.
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-};
+}

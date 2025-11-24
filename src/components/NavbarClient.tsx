@@ -2,13 +2,84 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { getUserData, type UserData } from "@/lib/auth";
 
 export default function NavbarClient() {
-  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    let mounted = true;
+
+    // Get initial session and user data
+    const getUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!mounted) return;
+        setUser(user);
+
+        if (user) {
+          const data = await getUserData();
+          if (!mounted) return;
+          setUserData(data);
+        }
+      } catch (err) {
+        console.error('Error getting user:', err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    getUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Skip INITIAL_SESSION and SIGNED_IN during initialization to avoid race condition
+      // The main getUser() call handles these cases
+      if (_event === 'INITIAL_SESSION' || _event === 'SIGNED_IN') {
+        return;
+      }
+
+      try {
+        if (!mounted) return;
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          const data = await getUserData();
+          if (!mounted) return;
+          setUserData(data);
+        } else {
+          setUserData(null);
+        }
+      } catch (err) {
+        console.error('Error in auth state change:', err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/" });
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
   };
 
   return (
@@ -51,7 +122,7 @@ export default function NavbarClient() {
 
           {/* Dashboard & Logout Buttons */}
           {/* Show loading state or buttons based on session status */}
-          {status === "loading" ? (
+          {loading ? (
             // Show placeholder buttons while loading to prevent flash
             <div className="flex items-center gap-3">
               <div className="bg-[#F44336] text-[#FFF] font-semibold px-4 py-2 rounded-lg flex items-center gap-2 opacity-50">
@@ -70,8 +141,15 @@ export default function NavbarClient() {
                 LOGOUT
               </div>
             </div>
-          ) : session ? (
+          ) : user ? (
             <div className="flex items-center gap-3">
+              {/* Show user name if available */}
+              {userData && (
+                <span className="text-gray-700 font-semibold hidden lg:block">
+                  {userData.full_name}
+                </span>
+              )}
+
               <Link href="/dashboard">
                 <button className="bg-[#F44336] hover:bg-[#FF8A80] text-[#FFF] font-semibold px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2">
                   {/* Profile Icon */}

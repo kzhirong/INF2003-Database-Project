@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { getUserData } from "@/lib/auth";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -10,6 +11,7 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,22 +19,32 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        redirect: false,
       });
 
-      if (result?.error) {
-        setError(result.error);
+      if (error) {
+        setError(error.message);
         setLoading(false);
       } else {
-        // Successfully logged in
-        router.push("/dashboard");
+        // Successfully logged in - check user role and redirect accordingly
+        const userData = await getUserData();
+
+        if (userData?.role === "system_admin") {
+          // System admin - redirect to admin dashboard
+          router.push("/admin");
+        } else if (userData?.role === "cca_admin" && userData.cca_id) {
+          // CCA admin - redirect to their CCA edit page
+          router.push(`/ccas/${userData.cca_id}/edit`);
+        } else {
+          // Student - redirect to dashboard
+          router.push("/dashboard");
+        }
         router.refresh();
       }
-    } catch (error) {
-      setError("An error occurred during login");
+    } catch (error: any) {
+      setError(error.message || "An error occurred during login");
       setLoading(false);
     }
   };
