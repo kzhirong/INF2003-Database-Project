@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Get user data from request
     const body = await request.json();
-    const { email, password, role, full_name, student_id, course, year_of_study, phone_number, cca_id } = body;
+    const { email, password, role, name, student_id, course, year_of_study, phone_number, cca_id } = body;
 
     // Create admin client
     const adminClient = createAdminClient();
@@ -42,12 +42,6 @@ export async function POST(request: NextRequest) {
       email_confirm: true, // Auto-confirm email
       user_metadata: {
         role,
-        full_name,
-        student_id,
-        course,
-        year_of_study,
-        phone_number,
-        cca_id,
       }
     });
 
@@ -62,17 +56,10 @@ export async function POST(request: NextRequest) {
     // Wait for trigger to complete
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Update the user's role and other fields in the users table
-    const updateData: any = { role, full_name };
-    if (student_id) updateData.student_id = student_id;
-    if (course) updateData.course = course;
-    if (year_of_study) updateData.year_of_study = year_of_study;
-    if (phone_number) updateData.phone_number = phone_number;
-    if (cca_id) updateData.cca_id = cca_id;
-
+    // Update the user's role in the users table (no name - comes from detail tables)
     const { error: updateError } = await adminClient
       .from('users')
-      .update(updateData)
+      .update({ role })
       .eq('id', newUser.user.id);
 
     if (updateError) {
@@ -81,6 +68,43 @@ export async function POST(request: NextRequest) {
         { success: false, error: `User created but failed to update profile: ${updateError.message}` },
         { status: 500 }
       );
+    }
+
+    // If CCA admin, insert into cca_admin_details
+    if (role === 'cca_admin' && cca_id) {
+      const { error: adminDetailsError } = await adminClient
+        .from('cca_admin_details')
+        .insert({ user_id: newUser.user.id, cca_id });
+
+      if (adminDetailsError) {
+        console.error('Error creating CCA admin details:', adminDetailsError);
+        return NextResponse.json(
+          { success: false, error: `User created but failed to create CCA admin details: ${adminDetailsError.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // If student, insert into student_details (including name)
+    if (role === 'student') {
+      const { error: studentDetailsError } = await adminClient
+        .from('student_details')
+        .insert({
+          user_id: newUser.user.id,
+          name: name || 'Student',
+          student_id: student_id || '',
+          course: course || '',
+          year_of_study: year_of_study ? parseInt(year_of_study) : 1,
+          phone_number: phone_number || null,
+        });
+
+      if (studentDetailsError) {
+        console.error('Error creating student details:', studentDetailsError);
+        return NextResponse.json(
+          { success: false, error: `User created but failed to create student details: ${studentDetailsError.message}` },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({

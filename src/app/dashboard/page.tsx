@@ -20,14 +20,15 @@ export default async function Dashboard() {
     .eq("id", user.id)
     .single();
 
-  if (userError) {
+  if (userError || !userData) {
     console.error("Error fetching user data:", userError);
+    redirect("/");
   }
 
   // Redirect non-students to their appropriate dashboard
-  if (userData?.role === "system_admin") {
+  if (userData.role === "system_admin") {
     redirect("/admin");
-  } else if (userData?.role === "cca_admin" && userData?.cca_id) {
+  } else if (userData.role === "cca_admin" && userData.cca_id) {
     redirect(`/cca-admin/${userData.cca_id}`);
   }
 
@@ -41,9 +42,9 @@ export default async function Dashboard() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  const userFullName = userData?.full_name || "Student";
+  const userFullName = userData?.name || "Student";
   const userEmail = user.email || "";
-  const userInitials = getInitials(userData?.full_name);
+  const userInitials = getInitials(userData?.name);
 
   // TODO: Fetch enrolled CCAs from database when enrollment is implemented
   const myCCAs = [

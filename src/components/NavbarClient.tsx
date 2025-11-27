@@ -146,7 +146,7 @@ export default function NavbarClient() {
               {/* Show user name if available */}
               {userData && (
                 <span className="text-gray-700 font-semibold hidden lg:block">
-                  {userData.full_name}
+                  {userData.name}
                 </span>
               )}
 

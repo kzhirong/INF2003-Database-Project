@@ -148,7 +148,7 @@ export default function AdminDashboard() {
           email: studentEmail,
           password: studentPassword,
           role: "student",
-          full_name: studentName,
+          name: studentName,
           student_id: studentId,
           course: studentCourse,
           year_of_study: studentYear,
@@ -252,7 +252,7 @@ export default function AdminDashboard() {
           email: ccaEmail,
           password: ccaPassword,
           role: "cca_admin",
-          full_name: ccaName,
+          name: ccaName,
           cca_id: newCcaId,
         }),
       });
