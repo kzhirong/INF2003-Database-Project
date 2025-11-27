@@ -74,7 +74,7 @@ export async function updateSession(request: NextRequest) {
           if (role === 'system_admin') {
             url.pathname = '/admin'
           } else if (role === 'cca_admin' && cca_id) {
-            url.pathname = `/ccas/${cca_id}/edit`
+            url.pathname = `/cca-admin/${cca_id}`
           } else {
             url.pathname = '/dashboard'
           }
@@ -93,15 +93,19 @@ export async function updateSession(request: NextRequest) {
           }
         }
 
-      // CCA Admin restrictions: Can ONLY access their CCA edit page
+      // CCA Admin restrictions: Can access their dashboard, members page, and edit page
       if (role === 'cca_admin') {
-        const allowedPath = `/ccas/${cca_id}/edit`
-        const isAllowedPath = request.nextUrl.pathname === allowedPath
+        const allowedPaths = [
+          `/cca-admin/${cca_id}`,
+          `/cca-admin/${cca_id}/members`,
+          `/ccas/${cca_id}/edit`
+        ]
+        const isAllowedPath = allowedPaths.some(path => request.nextUrl.pathname === path)
 
         if (!isAllowedPath) {
-          // Redirect CCA admin back to their edit page if they try to access anything else
+          // Redirect CCA admin back to their dashboard if they try to access anything else
           const url = request.nextUrl.clone()
-          url.pathname = allowedPath
+          url.pathname = `/cca-admin/${cca_id}`
           return NextResponse.redirect(url)
         }
       }

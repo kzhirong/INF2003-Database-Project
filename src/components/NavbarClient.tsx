@@ -150,7 +150,13 @@ export default function NavbarClient() {
                 </span>
               )}
 
-              <Link href="/dashboard">
+              <Link href={
+                userData?.role === "system_admin"
+                  ? "/admin"
+                  : userData?.role === "cca_admin" && userData?.cca_id
+                    ? `/cca-admin/${userData.cca_id}`
+                    : "/dashboard"
+              }>
                 <button className="bg-[#F44336] hover:bg-[#FF8A80] text-[#FFF] font-semibold px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2">
                   {/* Profile Icon */}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

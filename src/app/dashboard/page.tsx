@@ -24,6 +24,13 @@ export default async function Dashboard() {
     console.error("Error fetching user data:", userError);
   }
 
+  // Redirect non-students to their appropriate dashboard
+  if (userData?.role === "system_admin") {
+    redirect("/admin");
+  } else if (userData?.role === "cca_admin" && userData?.cca_id) {
+    redirect(`/cca-admin/${userData.cca_id}`);
+  }
+
   // Get user initials for avatar
   const getInitials = (name: string | null) => {
     if (!name) return "??";
