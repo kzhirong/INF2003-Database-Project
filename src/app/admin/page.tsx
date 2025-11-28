@@ -689,7 +689,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <Link
-                            href={`/ccas/${cca._id}/edit`}
+                            href={`/admin/ccas/${cca._id}`}
                             className="text-blue-600 hover:text-blue-900 mr-4"
                           >
                             Edit Details

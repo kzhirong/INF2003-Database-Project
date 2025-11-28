@@ -99,11 +99,12 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
       }
 
-      // System Admin restrictions: Can ONLY access admin page
+      // System Admin restrictions: Can ONLY access admin page and CCA edit pages
       if (role === 'system_admin') {
-        const isAdminPage = request.nextUrl.pathname === '/admin'
+        const isAdminPage = request.nextUrl.pathname.startsWith('/admin')
+        const isEditPage = request.nextUrl.pathname.startsWith('/ccas/') && request.nextUrl.pathname.endsWith('/edit')
 
-        if (!isAdminPage) {
+        if (!isAdminPage && !isEditPage) {
           // Redirect system admin back to admin page if they try to access anything else
           const url = request.nextUrl.clone()
           url.pathname = '/admin'
