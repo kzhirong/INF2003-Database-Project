@@ -17,7 +17,12 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
   // Form fields (Required Information)
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Sports");
-  const [schedule, setSchedule] = useState<string[]>([]);
+  const [schedule, setSchedule] = useState<Array<{
+    day: string;
+    startTime: string;
+    endTime: string;
+    location: string;
+  }>>([]);
   const [commitment, setCommitment] = useState("Schedule Based");
   const [sportType, setSportType] = useState("Competitive");
 
@@ -61,7 +66,24 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
         const cca = ccaData.data;
         setName(cca.name || "");
         setCategory(cca.category || "Sports");
-        setSchedule(cca.schedule || []);
+        
+        // Handle legacy schedule data (array of strings) vs new format (array of objects)
+        let formattedSchedule = [];
+        if (Array.isArray(cca.schedule)) {
+          if (cca.schedule.length > 0 && typeof cca.schedule[0] === 'string') {
+            // Convert string array to object array
+            formattedSchedule = cca.schedule.map((day: string) => ({
+              day,
+              startTime: "",
+              endTime: "",
+              location: ""
+            }));
+          } else {
+            formattedSchedule = cca.schedule;
+          }
+        }
+        setSchedule(formattedSchedule);
+        
         setCommitment(cca.commitment || "Schedule Based");
         setSportType(cca.sportType || "Competitive");
       } else {
@@ -88,8 +110,21 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
   };
 
   const handleScheduleToggle = (day: string) => {
+    setSchedule((prev) => {
+      const existingIndex = prev.findIndex(s => s.day === day);
+      if (existingIndex >= 0) {
+        // Remove the day
+        return prev.filter(s => s.day !== day);
+      } else {
+        // Add the day with empty time/location (user will fill in)
+        return [...prev, { day, startTime: '', endTime: '', location: '' }];
+      }
+    });
+  };
+
+  const updateScheduleSession = (day: string, field: 'startTime' | 'endTime' | 'location', value: string) => {
     setSchedule((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+      prev.map(s => s.day === day ? { ...s, [field]: value } : s)
     );
   };
 
@@ -311,21 +346,70 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Schedule *
                   </label>
-                  <div className="flex flex-wrap gap-3">
-                    {daysOfWeek.map((day) => (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => handleScheduleToggle(day)}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                          schedule.includes(day)
-                            ? "bg-[#F44336] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {day.slice(0, 3)}
-                      </button>
-                    ))}
+                  <div className="space-y-4">
+                    {daysOfWeek.map((day) => {
+                      const session = schedule.find(s => s.day === day);
+                      const isSelected = !!session;
+
+                      return (
+                        <div key={day} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center mb-3">
+                            <input
+                              type="checkbox"
+                              id={`day-${day}`}
+                              checked={isSelected}
+                              onChange={() => handleScheduleToggle(day)}
+                              className="w-4 h-4 text-[#F44336] border-gray-300 rounded focus:ring-[#F44336] cursor-pointer"
+                            />
+                            <label htmlFor={`day-${day}`} className="ml-2 font-medium text-gray-900 cursor-pointer">
+                              {day}
+                            </label>
+                          </div>
+
+                          {isSelected && (
+                            <div className="ml-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Start Time *
+                                </label>
+                                <input
+                                  type="time"
+                                  value={session?.startTime || ''}
+                                  onChange={(e) => updateScheduleSession(day, 'startTime', e.target.value)}
+                                  required
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  End Time *
+                                </label>
+                                <input
+                                  type="time"
+                                  value={session?.endTime || ''}
+                                  onChange={(e) => updateScheduleSession(day, 'endTime', e.target.value)}
+                                  required
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Location *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={session?.location || ''}
+                                  onChange={(e) => updateScheduleSession(day, 'location', e.target.value)}
+                                  placeholder="e.g., Sports Hall, Level 1"
+                                  required
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

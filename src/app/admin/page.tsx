@@ -529,105 +529,119 @@ export default function AdminDashboard() {
         {activeTab === "students" && (
           <div className="bg-white rounded-lg shadow-sm p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Student Account</h2>
-            <form onSubmit={handleCreateStudent} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-900 text-sm font-semibold mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="e.g., John Doe"
-                    required
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                  />
+            <form onSubmit={handleCreateStudent} className="space-y-6">
+              {/* Student Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 pb-2 border-b-2 border-[#F44336]">
+                  Student Information
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={studentName}
+                      onChange={(e) => setStudentName(e.target.value)}
+                      placeholder="e.g., John Doe"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Student ID *
+                    </label>
+                    <input
+                      type="text"
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder="e.g., 2402498"
+                      required
+                      pattern="\d{7}"
+                      maxLength={7}
+                      title="Student ID must be exactly 7 digits"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-gray-900 text-sm font-semibold mb-2">
-                    Student ID *
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Course *
                   </label>
-                  <input
-                    type="text"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    placeholder="e.g., 2402498"
+                  <select
+                    value={studentCourseId}
+                    onChange={(e) => setStudentCourseId(e.target.value)}
                     required
-                    pattern="\d{7}"
-                    maxLength={7}
-                    title="Student ID must be exactly 7 digits"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={studentEmail}
-                  onChange={(e) => setStudentEmail(e.target.value)}
-                  placeholder="e.g., 2402498@sit.singaporetech.edu.sg"
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  Course *
-                </label>
-                <select
-                  value={studentCourseId}
-                  onChange={(e) => setStudentCourseId(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                >
-                  <option value="">
-                    {courses.length === 0 ? 'Loading courses...' : 'Select Course'}
-                  </option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.course_name}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  >
+                    <option value="">
+                      {courses.length === 0 ? 'Loading courses...' : 'Select Course'}
                     </option>
-                  ))}
-                </select>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.course_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    value={studentPhone}
+                    onChange={(e) => setStudentPhone(e.target.value)}
+                    placeholder="e.g., 81234567"
+                    pattern="[89]\d{7}"
+                    maxLength={8}
+                    required
+                    title="Phone number must be 8 digits starting with 8 or 9"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  value={studentPhone}
-                  onChange={(e) => setStudentPhone(e.target.value)}
-                  placeholder="e.g., 81234567"
-                  pattern="[89]\d{7}"
-                  maxLength={8}
-                  required
-                  title="Phone number must be 8 digits starting with 8 or 9"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                />
-              </div>
+              {/* Account Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 pb-2 border-b-2 border-[#F44336]">
+                  Account Information
+                </h3>
 
-              <div>
-                <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  value={studentPassword}
-                  onChange={(e) => setStudentPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                />
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={studentEmail}
+                    onChange={(e) => setStudentEmail(e.target.value)}
+                    placeholder="e.g., 2402498@sit.singaporetech.edu.sg"
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Password *
+                  </label>
+                  <input
+                    type="password"
+                    value={studentPassword}
+                    onChange={(e) => setStudentPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <button
@@ -816,7 +830,7 @@ export default function AdminDashboard() {
               {/* Account Details Section */}
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-gray-900 pb-2 border-b-2 border-[#F44336]">
-                  Account Details
+                  Account Information
                 </h3>
 
                 <div>
