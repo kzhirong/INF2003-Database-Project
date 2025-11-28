@@ -16,11 +16,15 @@ const geistMono = Geist_Mono({
 const raleway = Raleway({
   variable: "--font-raleway",
   subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 const rubik = Rubik({
   variable: "--font-rubik",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {

@@ -13,9 +13,12 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
   // Loading state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [userEmail, setUserEmail] = useState(""); // Store actual user email from Supabase
+  const [userRole, setUserRole] = useState(""); // Store user role for permission checking
 
   // Fixed/Required fields
   const [name, setName] = useState("");
+  const [originalName, setOriginalName] = useState(""); // Store original name for display
   const [category, setCategory] = useState("Sports");
   const [schedule, setSchedule] = useState<string[]>([]);
   const [commitment, setCommitment] = useState("Schedule Based");
@@ -37,8 +40,34 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
 
   // Fetch existing CCA data on mount
   useEffect(() => {
+    fetchUserEmail();
     fetchCCAData();
   }, [resolvedParams.id]);
+
+  const fetchUserEmail = async () => {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user?.email) {
+        setUserEmail(user.email);
+        
+        // Get user role for permission checking
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        if (userData?.role) {
+          setUserRole(userData.role);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user email:", error);
+    }
+  };
 
   const fetchCCAData = async () => {
     try {
@@ -49,6 +78,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
       if (data.success) {
         const cca = data.data;
         setName(cca.name || "");
+        setOriginalName(cca.name || ""); // Store original name for header/email display
         setCategory(cca.category || "Sports");
         setSchedule(cca.schedule || []);
         setCommitment(cca.commitment || "Schedule Based");
@@ -89,13 +119,9 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
     try {
       setSaving(true);
 
-      const ccaData = {
+      // Build the CCA data object
+      const ccaData: any = {
         _id: resolvedParams.id,
-        name,
-        category,
-        schedule,
-        commitment,
-        sportType,
         heroImage,
         shortDescription,
         meetingDetails: {
@@ -109,6 +135,27 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         },
         blocks
       };
+
+      // Only include structural fields if user is System Admin
+      if (userRole === 'system_admin') {
+        ccaData.name = name;
+        ccaData.category = category;
+        ccaData.commitment = commitment;
+        
+        // Only include schedule for Schedule Based commitment, otherwise set to null to clear it
+        if (commitment === "Schedule Based") {
+          ccaData.schedule = schedule;
+        } else {
+          ccaData.schedule = null;
+        }
+
+        // Only include sportType for Sports category, otherwise set to null to clear it
+        if (category === "Sports") {
+          ccaData.sportType = sportType;
+        } else {
+          ccaData.sportType = null;
+        }
+      }
 
       const response = await fetch(`/api/ccas/${resolvedParams.id}`, {
         method: 'PUT',
@@ -146,16 +193,59 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAFBFD]">
       <NavbarClient />
 
-      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Edit CCA Page</h1>
-          <p className="text-gray-600">Customize your CCA page with flexible content blocks</p>
+      <main className="py-8">
+        {/* User Profile Section with Tab Navigation */}
+        <div className="px-4 sm:px-8 md:px-16 lg:px-24 mb-8">
+          <div className="flex items-center justify-between gap-6">
+            {/* Left: Profile Picture and User Info */}
+            <div className="flex items-center gap-6">
+              {/* Profile Picture - Placeholder */}
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face"
+                  alt="CCA Admin"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              {/* User Info */}
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-black mb-1">
+                  {originalName || 'CCA ADMIN'}
+                </h2>
+                <p className="text-base md:text-lg text-gray-600">
+                  {userEmail || 'Loading...'}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Tab Navigation Buttons */}
+            <div className="hidden md:flex items-center gap-4">
+              <button
+                onClick={() => router.push(`/cca-admin/${resolvedParams.id}`)}
+                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => router.push(`/cca-admin/${resolvedParams.id}/members`)}
+                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                My Members
+              </button>
+              <button
+                className="px-6 py-2 text-base font-semibold text-white bg-[#F44336] rounded-lg cursor-pointer"
+              >
+                Manage
+              </button>
+            </div>
+          </div>
         </div>
 
+      <div className="px-4 sm:px-8 md:px-16 lg:px-24">
         <div className="space-y-8">
           {/* Fixed Information Section */}
           <div className="bg-white rounded-lg shadow-sm p-8">
@@ -168,96 +258,204 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
 
             <div className="space-y-6">
               {/* CCA Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  CCA Name *
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                  placeholder="e.g., BASKETBALL"
-                />
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Category *
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Schedule */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Schedule *
-                </label>
-                <div className="flex flex-wrap gap-3">
-                  {daysOfWeek.map((day) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => handleScheduleToggle(day)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                        schedule.includes(day)
-                          ? "bg-[#F44336] text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {day.slice(0, 3)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Commitment Type */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Commitment Type *
-                </label>
-                <select
-                  value={commitment}
-                  onChange={(e) => setCommitment(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                >
-                  {commitmentTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sport Type (conditional) */}
-              {category === "Sports" && (
+              {userRole === 'cca_admin' ? (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Sport Type *
+                    CCA Name *
+                  </label>
+                  <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 flex items-center justify-between">
+                    <span>{originalName}</span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                      </svg>
+                      Read-only
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    CCA Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                    placeholder="e.g., BASKETBALL"
+                  />
+                </div>
+              )}
+
+              {/* Category */}
+              {userRole === 'cca_admin' ? (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 flex items-center justify-between">
+                    <span>{category}</span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                      </svg>
+                      Read-only
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Category *
                   </label>
                   <select
-                    value={sportType}
-                    onChange={(e) => setSportType(e.target.value)}
+                    value={category}
+                    onChange={(e) => {
+                      const newCategory = e.target.value;
+                      setCategory(newCategory);
+                      // Reset sportType to default if changing away from Sports
+                      if (newCategory !== "Sports") {
+                        setSportType("Competitive");
+                      }
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                   >
-                    {sportTypes.map((type) => (
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Sport Type (conditional - directly under Category since they're related) */}
+              {category === "Sports" && (
+                userRole === 'cca_admin' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Sport Type *
+                    </label>
+                    <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 flex items-center justify-between">
+                      <span>{sportType}</span>
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                        </svg>
+                        Read-only
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Sport Type *
+                    </label>
+                    <select
+                      value={sportType}
+                      onChange={(e) => setSportType(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                    >
+                      {sportTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              )}
+
+              {/* Commitment Type */}
+              {userRole === 'cca_admin' ? (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Commitment Type *
+                  </label>
+                  <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 flex items-center justify-between">
+                    <span>{commitment}</span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                      </svg>
+                      Read-only
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Commitment Type *
+                  </label>
+                  <select
+                    value={commitment}
+                    onChange={(e) => {
+                      const newCommitment = e.target.value;
+                      setCommitment(newCommitment);
+                      // Clear schedule if changing to Flexible or Event Based
+                      if (newCommitment !== "Schedule Based") {
+                        setSchedule([]);
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  >
+                    {commitmentTypes.map((type) => (
                       <option key={type} value={type}>
                         {type}
                       </option>
                     ))}
                   </select>
                 </div>
+              )}
+
+              {/* Schedule (conditional - only show when Schedule Based) */}
+              {commitment === "Schedule Based" && (
+                userRole === 'cca_admin' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Schedule *
+                    </label>
+                    <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span>{schedule.length > 0 ? schedule.join(", ") : "No schedule set"}</span>
+                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                          </svg>
+                          Read-only
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Schedule *
+                    </label>
+                    <div className="flex flex-wrap gap-3">
+                      {daysOfWeek.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => handleScheduleToggle(day)}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                            schedule.includes(day)
+                              ? "bg-[#F44336] text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {day.slice(0, 3)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
               )}
             </div>
           </div>
@@ -406,7 +604,8 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

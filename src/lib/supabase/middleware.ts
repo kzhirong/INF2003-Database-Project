@@ -40,9 +40,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Allow access to login page, signup page, and auth routes
+  // Allow access to login page and auth routes
   const isAuthRoute = request.nextUrl.pathname === '/' ||
-                      request.nextUrl.pathname === '/signup' ||
                       request.nextUrl.pathname.startsWith('/auth')
 
   // If no user and not on auth route, redirect to login

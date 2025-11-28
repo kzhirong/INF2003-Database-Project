@@ -24,8 +24,8 @@ This creates:
 ### 2. System Features
 
 #### For Students:
-- **Signup**: `/signup` - Create new account (defaults to student role)
 - **Login**: `/` - Login and redirect to `/dashboard`
+- **Account Creation**: Only system admins can create student accounts via `/admin`
 - **Access**: Can view all CCAs, enroll, and see dashboard
 - **Restrictions**: Cannot access any CCA edit pages
 
@@ -38,35 +38,26 @@ This creates:
 
 #### Test Student Account:
 
-1. Go to http://localhost:3000/signup
-2. Create account with email: `student@sit.singaporetech.edu.sg`
-3. Password: `password123`
-4. Login - should redirect to `/dashboard`
-5. Try accessing a CCA detail page - should see CCA details but NO "Edit Page" button
-6. Try accessing `/ccas/{id}/edit` directly - should be redirected to `/dashboard`
+1. Login as system admin at http://localhost:3000/
+2. Go to `/admin` dashboard
+3. Create a student account via the "Register Student" tab
+4. Logout and login with the student credentials
+5. Should redirect to `/dashboard`
+6. Try accessing a CCA detail page - should see CCA details but NO "Edit Page" button
+7. Try accessing `/ccas/{id}/edit` directly - should be redirected to `/dashboard`
 
 #### Test CCA Admin Account:
 
-You need to manually create a CCA admin account in Supabase:
+You need to create a CCA admin account via system admin:
 
-1. First, create a test user via signup page
-2. Go to Supabase Dashboard → **Authentication** → **Users**
-3. Find the user you just created, copy their UUID
-4. Go to **SQL Editor** and run:
-
-```sql
-UPDATE public.users
-SET role = 'cca_admin', cca_id = 'YOUR_CCA_MONGODB_ID'
-WHERE id = 'USER_UUID_HERE';
-```
-
-Replace:
-- `YOUR_CCA_MONGODB_ID`: Get this from MongoDB (e.g., from the CCAs listing page URL)
-- `USER_UUID_HERE`: The UUID you copied from the user
-
-5. Login with that user - should redirect to `/ccas/{cca_id}/edit`
-6. Try accessing `/dashboard` - should be redirected back to edit page
-7. Try accessing different CCA edit page - should be redirected back to their assigned CCA
+1. Login as system admin
+2. Go to **Register CCA Admin** tab in `/admin`
+3. Create a new CCA and CCA admin account
+4. Copy the CCA ID from the success message
+5. Logout and login with the CCA admin credentials
+6. Should redirect to `/cca-admin/{cca_id}` (CCA admin dashboard)
+7. Try accessing `/dashboard` - should be redirected back to CCA admin page
+8. Try accessing different CCA edit page - should be redirected back to their assigned CCA
 
 ### 4. How It Works
 
@@ -74,7 +65,8 @@ Replace:
 ```
 User Login → Check user role in DB
   ├─ Student → Redirect to /dashboard
-  └─ CCA Admin → Redirect to /ccas/{cca_id}/edit
+  ├─ CCA Admin → Redirect to /cca-admin/{cca_id}
+  └─ System Admin → Redirect to /admin
 ```
 
 #### Middleware Protection:
@@ -106,18 +98,33 @@ PUT/DELETE /api/ccas/{id}
 ```sql
 id          UUID         (References auth.users)
 email       TEXT         (User email)
-role        TEXT         ('student' or 'cca_admin')
-cca_id      TEXT         (MongoDB ObjectId - only for CCA admins)
+role        TEXT         ('student', 'cca_admin', or 'system_admin')
 created_at  TIMESTAMP
-updated_at  TIMESTAMP
+```
+
+**student_details table:**
+```sql
+id             UUID         (Primary key)
+user_id        UUID         (References users.id, UNIQUE)
+student_id     TEXT         (7-digit student ID, UNIQUE)
+course         TEXT         (Student's course)
+year_of_study  INTEGER      (1-4)
+phone_number   TEXT         (8-digit SG number, UNIQUE)
+name           TEXT         (Student's full name)
+```
+
+**cca_admin_details table:**
+```sql
+id             UUID         (Primary key)
+user_id        UUID         (References users.id, UNIQUE)
+cca_id         TEXT         (MongoDB ObjectId of assigned CCA)
 ```
 
 ### 6. File Changes Summary
 
 **New Files:**
 - `src/lib/auth.ts` - Auth utility functions
-- `src/app/signup/page.tsx` - Signup page
-- `supabase-schema.sql` - Database schema
+- `src/app/admin/page.tsx` - System admin dashboard (user creation)
 - `ROLE_SYSTEM_SETUP.md` - This guide
 
 **Modified Files:**
@@ -128,27 +135,33 @@ updated_at  TIMESTAMP
 
 ### 7. Future Enhancements
 
-- Add admin dashboard to manage CCA admin assignments
 - Allow one user to be admin of multiple CCAs
-- Add email verification for new signups
 - Add password reset functionality
-- Create CCA admin registration flow with approval system
+- Add user management features (edit, disable, delete users)
+- Add audit logs for admin actions
+- Add email notifications for account creation
 
 ## Troubleshooting
 
 **Issue: User created but no role assigned**
-- Check if the trigger is created in Supabase
-- Run the `supabase-schema.sql` again
+- Check that the admin API is properly inserting into users table
+- Verify role is being set correctly in the request
 
 **Issue: CCA admin can't edit their page**
-- Verify `cca_id` in users table matches MongoDB ObjectId exactly
+- Verify `cca_id` in cca_admin_details table matches MongoDB ObjectId exactly
 - Check browser console for errors
+- Ensure the CCA actually exists in MongoDB
 
 **Issue: Redirect loop**
-- Check middleware is allowing signup and login pages
+- Check middleware is allowing login page
 - Verify user has valid role in database
+- Check that the user has corresponding detail table entry (student_details or cca_admin_details)
 
 **Issue: "Unauthorized" when editing**
 - Check if user is logged in
 - Verify user's role is 'cca_admin'
-- Verify cca_id matches the CCA being edited
+- Verify cca_id in cca_admin_details matches the CCA being edited
+
+**Issue: Student account missing details**
+- Ensure student_details record was created with the user
+- Check that all required fields (name, student_id, course, year_of_study) are provided

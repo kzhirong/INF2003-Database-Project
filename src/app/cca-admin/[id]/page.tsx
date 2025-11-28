@@ -20,7 +20,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
 
   const [loading, setLoading] = useState(true);
   const [ccaData, setCcaData] = useState<CCAData | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [userEmail, setUserEmail] = useState(""); // Store actual user email from Supabase
 
   // Placeholder data for upcoming events
   const upcomingEvents = [
@@ -31,8 +31,23 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
   ];
 
   useEffect(() => {
+    fetchUserEmail();
     fetchCCAData();
   }, [resolvedParams.id]);
+
+  const fetchUserEmail = async () => {
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    } catch (error) {
+      console.error("Error fetching user email:", error);
+    }
+  };
 
   const fetchCCAData = async () => {
     try {
@@ -70,15 +85,6 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
       <NavbarClient />
 
       <main className="py-8">
-        {/* Breadcrumb */}
-        <div className="px-4 sm:px-8 md:px-16 lg:px-24 mb-8">
-          <p className="text-sm md:text-base text-gray-600">
-            <span className="text-black font-medium">HOME</span>
-            <span className="mx-2">|</span>
-            <span className="text-[#F44336] font-semibold">DASHBOARD OVERVIEW</span>
-          </p>
-        </div>
-
         {/* User Profile Section with Tab Navigation */}
         <div className="px-4 sm:px-8 md:px-16 lg:px-24 mb-8">
           <div className="flex items-center justify-between gap-6">
@@ -96,10 +102,10 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
               {/* User Info */}
               <div>
                 <h2 className="text-2xl md:text-3xl font-bold text-black mb-1">
-                  CCA ADMIN
+                  {ccaData?.name || 'CCA ADMIN'}
                 </h2>
                 <p className="text-base md:text-lg text-gray-600">
-                  {ccaData?.name?.toLowerCase().replace(/\s+/g, '')}@sit.singaporetech.edu.sg
+                  {userEmail || 'Loading...'}
                 </p>
               </div>
             </div>
@@ -107,30 +113,21 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
             {/* Right: Tab Navigation Buttons */}
             <div className="hidden md:flex items-center gap-4">
               <button
-                onClick={() => setActiveTab("overview")}
-                className={`px-6 py-2 text-base font-semibold rounded-lg transition-colors ${
-                  activeTab === "overview"
-                    ? "text-white bg-[#F44336]"
-                    : "text-black bg-white border border-gray-300 hover:bg-gray-50"
-                }`}
+                className="px-6 py-2 text-base font-semibold text-white bg-[#F44336] rounded-lg cursor-pointer"
               >
                 Overview
               </button>
               <button
                 onClick={() => router.push(`/cca-admin/${resolvedParams.id}/members`)}
-                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 My Members
               </button>
               <button
-                onClick={() => setActiveTab("settings")}
-                className={`px-6 py-2 text-base font-medium rounded-lg transition-colors ${
-                  activeTab === "settings"
-                    ? "text-white bg-[#F44336]"
-                    : "text-black bg-white border border-gray-300 hover:bg-gray-50"
-                }`}
+                onClick={() => router.push(`/ccas/${resolvedParams.id}/edit`)}
+                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                Settings
+                Manage
               </button>
             </div>
           </div>
@@ -138,11 +135,6 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
 
         {/* Dashboard Content */}
         <div className="px-4 sm:px-8 md:px-16 lg:px-24">
-          {/* Page Title */}
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold italic text-[#F44336] mb-8">
-            {ccaData?.name} Dashboard
-          </h1>
-
           {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Upcoming Events */}
@@ -152,12 +144,11 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                   <h2 className="text-xl md:text-2xl font-bold text-black">
                     Upcoming Events
                   </h2>
-                  <a
-                    href="#"
-                    className="text-sm md:text-base text-blue-600 hover:text-blue-800 font-medium underline"
+                  <button
+                    className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     Manage Events
-                  </a>
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -177,7 +168,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            {/* Right Column - Stats and Quick Actions */}
+            {/* Right Column - Stats */}
             <div className="space-y-6">
               {/* Active Members Section */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
@@ -203,25 +194,6 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                       Upcoming Events
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Quick Actions Section */}
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl md:text-2xl font-bold text-black mb-6">
-                  Quick Actions
-                </h2>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => router.push(`/ccas/${resolvedParams.id}/edit`)}
-                    className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"
-                  >
-                    Manage CCA
-                  </button>
-                  <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
-                    Manage Events
-                  </button>
                 </div>
               </div>
             </div>

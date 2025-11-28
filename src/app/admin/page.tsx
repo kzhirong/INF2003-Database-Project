@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getUserData } from "@/lib/auth";
 import NavbarClient from "@/components/NavbarClient";
 
@@ -10,6 +11,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<"students" | "ccas" | "manage">("students");
+
+  // Constants for CCA form
+  const categories = ["Sports", "Arts & Culture", "Community Service", "Academic", "Special Interest"];
+  const commitmentTypes = ["Schedule Based", "Flexible", "Event Based"];
+  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const sportTypes = ["Competitive", "Recreational", "Both"];
 
   // Student form
   const [studentEmail, setStudentEmail] = useState("");
@@ -24,6 +31,10 @@ export default function AdminDashboard() {
   const [ccaEmail, setCcaEmail] = useState("");
   const [ccaPassword, setCcaPassword] = useState("");
   const [ccaName, setCcaName] = useState("");
+  const [ccaCategory, setCcaCategory] = useState("Sports");
+  const [ccaCommitment, setCcaCommitment] = useState("Schedule Based");
+  const [ccaSchedule, setCcaSchedule] = useState<string[]>([]);
+  const [ccaSportType, setCcaSportType] = useState("Competitive");
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -32,7 +43,6 @@ export default function AdminDashboard() {
   // CCA Management state
   const [ccaList, setCcaList] = useState<any[]>([]);
   const [loadingCcas, setLoadingCcas] = useState(false);
-  const [editingCca, setEditingCca] = useState<any>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -107,30 +117,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleEditCcaName = async (ccaId: string, newName: string) => {
-    if (!newName.trim()) {
-      setError("CCA name cannot be empty");
-      return;
-    }
 
-    try {
-      const response = await fetch(`/api/ccas/${ccaId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName }),
-      });
-      const data = await response.json();
 
-      if (data.success) {
-        setSuccess(`CCA name updated to "${newName}"!`);
-        setEditingCca(null);
-        fetchCcas(); // Refresh the list
-      } else {
-        setError(`Failed to update CCA: ${data.error}`);
-      }
-    } catch (err: any) {
-      setError(`Failed to update CCA: ${err.message}`);
-    }
+  const handleScheduleToggle = (day: string) => {
+    setCcaSchedule((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
   };
 
   const handleCreateStudent = async (e: React.FormEvent) => {
@@ -197,10 +189,10 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: ccaName,
-          category: 'Sports', // Default category
-          schedule: [],
-          commitment: 'Schedule Based',
-          sportType: 'Competitive',
+          category: ccaCategory,
+          schedule: ccaCommitment === "Schedule Based" ? ccaSchedule : [],
+          commitment: ccaCommitment,
+          sportType: ccaCategory === "Sports" ? ccaSportType : undefined,
           heroImage: '',
           shortDescription: `Welcome to ${ccaName}!`,
           meetingDetails: {
@@ -273,6 +265,10 @@ export default function AdminDashboard() {
       setCcaEmail("");
       setCcaPassword("");
       setCcaName("");
+      setCcaCategory("Sports");
+      setCcaCommitment("Schedule Based");
+      setCcaSchedule([]);
+      setCcaSportType("Competitive");
       setSubmitting(false);
     } catch (err: any) {
       console.error("Create CCA error (caught):", err);
@@ -302,11 +298,6 @@ export default function AdminDashboard() {
       <NavbarClient />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">System Admin Dashboard</h1>
-          <p className="text-gray-600">Create and manage student and CCA admin accounts</p>
-        </div>
-
         {/* Tab Navigation */}
         <div className="flex gap-4 mb-6 border-b border-gray-200">
           <button
@@ -477,55 +468,159 @@ export default function AdminDashboard() {
         {activeTab === "ccas" && (
           <div className="bg-white rounded-lg shadow-sm p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Create CCA Admin Account</h2>
-            <form onSubmit={handleCreateCCA} className="space-y-4">
-              <div>
-                <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  CCA Name *
-                </label>
-                <input
-                  type="text"
-                  value={ccaName}
-                  onChange={(e) => setCcaName(e.target.value)}
-                  placeholder="Basketball CCA"
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                />
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> This will create a new CCA in the system with the name you provide.
-                  The CCA admin will be able to customize all details after logging in.
+            <form onSubmit={handleCreateCCA} className="space-y-6">
+              {/* Required Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 pb-2 border-b-2 border-[#F44336]">
+                  Required Information
+                </h3>
+                <p className="text-sm text-gray-500">
+                  These fields are required for filtering and categorization
                 </p>
+
+                {/* CCA Name */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    CCA Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={ccaName}
+                    onChange={(e) => setCcaName(e.target.value)}
+                    placeholder="e.g., BASKETBALL"
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  />
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    value={ccaCategory}
+                    onChange={(e) => {
+                      const newCategory = e.target.value;
+                      setCcaCategory(newCategory);
+                      if (newCategory !== "Sports") {
+                        setCcaSportType("Competitive");
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sport Type (conditional - directly under Category since they're related) */}
+                {ccaCategory === "Sports" && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Sport Type *
+                    </label>
+                    <select
+                      value={ccaSportType}
+                      onChange={(e) => setCcaSportType(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                    >
+                      {sportTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Commitment Type */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Commitment Type *
+                  </label>
+                  <select
+                    value={ccaCommitment}
+                    onChange={(e) => {
+                      const newCommitment = e.target.value;
+                      setCcaCommitment(newCommitment);
+                      if (newCommitment !== "Schedule Based") {
+                        setCcaSchedule([]);
+                      }
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  >
+                    {commitmentTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Schedule (conditional - only show when Schedule Based) */}
+                {ccaCommitment === "Schedule Based" && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Schedule *
+                    </label>
+                    <div className="flex flex-wrap gap-3">
+                      {daysOfWeek.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => handleScheduleToggle(day)}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                            ccaSchedule.includes(day)
+                              ? "bg-[#F44336] text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {day.slice(0, 3)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={ccaEmail}
-                  onChange={(e) => setCcaEmail(e.target.value)}
-                  placeholder="basketball@sit.singaporetech.edu.sg"
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                />
-              </div>
+              {/* Account Details Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 pb-2 border-b-2 border-[#F44336]">
+                  Account Details
+                </h3>
 
-              <div>
-                <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  value={ccaPassword}
-                  onChange={(e) => setCcaPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                />
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={ccaEmail}
+                    onChange={(e) => setCcaEmail(e.target.value)}
+                    placeholder="basketball@sit.singaporetech.edu.sg"
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Password *
+                  </label>
+                  <input
+                    type="password"
+                    value={ccaPassword}
+                    onChange={(e) => setCcaPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <button
@@ -579,24 +674,7 @@ export default function AdminDashboard() {
                     {ccaList.map((cca) => (
                       <tr key={cca._id}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {editingCca?._id === cca._id ? (
-                            <input
-                              type="text"
-                              defaultValue={cca.name}
-                              onBlur={(e) => handleEditCcaName(cca._id, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleEditCcaName(cca._id, e.currentTarget.value);
-                                } else if (e.key === 'Escape') {
-                                  setEditingCca(null);
-                                }
-                              }}
-                              autoFocus
-                              className="text-sm font-medium text-gray-900 border border-gray-300 rounded px-2 py-1"
-                            />
-                          ) : (
-                            <div className="text-sm font-medium text-gray-900">{cca.name}</div>
-                          )}
+                          <div className="text-sm font-medium text-gray-900">{cca.name}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{cca.category}</div>
@@ -610,12 +688,12 @@ export default function AdminDashboard() {
                           <div className="text-sm text-gray-900">{cca.meetingDetails?.contactEmail || 'N/A'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => setEditingCca(cca)}
-                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                          <Link
+                            href={`/ccas/${cca._id}/edit`}
+                            className="text-blue-600 hover:text-blue-900 mr-4"
                           >
-                            Edit Name
-                          </button>
+                            Edit Details
+                          </Link>
                           <button
                             onClick={() => handleDeleteCca(cca._id, cca.name)}
                             className="text-red-600 hover:text-red-900"
