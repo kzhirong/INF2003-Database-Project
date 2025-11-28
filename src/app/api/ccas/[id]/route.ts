@@ -94,8 +94,7 @@ export async function PUT(
       delete body.name;
       delete body.category;
       delete body.sportType;
-      delete body.commitment;
-      delete body.schedule;
+      // commitment and schedule are now allowed
     }
 
     // Check if CCA exists

@@ -136,25 +136,25 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         blocks
       };
 
-      // Only include structural fields if user is System Admin
+      // Structural fields (System Admin only)
       if (userRole === 'system_admin') {
         ccaData.name = name;
         ccaData.category = category;
-        ccaData.commitment = commitment;
         
-        // Only include schedule for Schedule Based commitment, otherwise set to null to clear it
-        if (commitment === "Schedule Based") {
-          ccaData.schedule = schedule;
-        } else {
-          ccaData.schedule = null;
-        }
-
         // Only include sportType for Sports category, otherwise set to null to clear it
         if (category === "Sports") {
           ccaData.sportType = sportType;
         } else {
           ccaData.sportType = null;
         }
+      }
+
+      // Commitment and Schedule (Editable by both System Admin and CCA Admin)
+      ccaData.commitment = commitment;
+      if (commitment === "Schedule Based") {
+        ccaData.schedule = schedule;
+      } else {
+        ccaData.schedule = null;
       }
 
       const response = await fetch(`/api/ccas/${resolvedParams.id}`, {
@@ -405,23 +405,6 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                 )}
 
                 {/* Commitment Type */}
-                {userRole === 'cca_admin' ? (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Commitment Type *
-                    </label>
-                    <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 flex items-center justify-between">
-                      <span>{commitment}</span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-                        </svg>
-                        Read-only
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
-                  </div>
-                ) : (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Commitment Type *
@@ -445,51 +428,30 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                       ))}
                     </select>
                   </div>
-                )}
 
                 {/* Schedule (conditional - only show when Schedule Based) */}
                 {commitment === "Schedule Based" && (
-                  userRole === 'cca_admin' ? (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Schedule *
-                      </label>
-                      <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-                        <div className="flex items-center justify-between mb-2">
-                          <span>{schedule.length > 0 ? schedule.join(", ") : "No schedule set"}</span>
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-                            </svg>
-                            Read-only
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Schedule *
+                    </label>
+                    <div className="flex flex-wrap gap-3">
+                      {daysOfWeek.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => handleScheduleToggle(day)}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                            schedule.includes(day)
+                              ? "bg-[#F44336] text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {day.slice(0, 3)}
+                        </button>
+                      ))}
                     </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Schedule *
-                      </label>
-                      <div className="flex flex-wrap gap-3">
-                        {daysOfWeek.map((day) => (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => handleScheduleToggle(day)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                              schedule.includes(day)
-                                ? "bg-[#F44336] text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
-                          >
-                            {day.slice(0, 3)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )
+                  </div>
                 )}
               </div>
             </div>
