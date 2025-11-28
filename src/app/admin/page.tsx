@@ -23,9 +23,11 @@ export default function AdminDashboard() {
   const [studentPassword, setStudentPassword] = useState("");
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
-  const [studentCourse, setStudentCourse] = useState("");
-  const [studentYear, setStudentYear] = useState("");
+  const [studentCourseId, setStudentCourseId] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
+
+  // Courses list from database
+  const [courses, setCourses] = useState<Array<{id: string, course_name: string}>>([]);
 
   // CCA form
   const [ccaEmail, setCcaEmail] = useState("");
@@ -46,6 +48,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     checkAdminAccess();
+    fetchCourses();
   }, []);
 
   useEffect(() => {
@@ -95,6 +98,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchCourses = async () => {
+    try {
+      console.log('Fetching courses...');
+      const response = await fetch('/api/courses');
+      const data = await response.json();
+      console.log('Courses response:', data);
+      if (data.success) {
+        console.log('Setting courses:', data.data);
+        setCourses(data.data);
+      } else {
+        console.error('Failed to fetch courses:', data.error);
+      }
+    } catch (err) {
+      console.error("Error fetching courses:", err);
+    }
+  };
+
   const handleDeleteCca = async (ccaId: string, ccaName: string) => {
     if (!confirm(`Are you sure you want to delete "${ccaName}"? This action cannot be undone.`)) {
       return;
@@ -132,6 +152,33 @@ export default function AdminDashboard() {
     setSubmitting(true);
 
     try {
+      // Check for existing Student ID and Phone Number
+      const checkResponse = await fetch('/api/admin/check-student-exists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: studentId,
+          phone_number: studentPhone,
+        }),
+      });
+
+      const checkData = await checkResponse.json();
+
+      if (!checkData.success) {
+        setError(checkData.error || "Failed to validate student data");
+        setSubmitting(false);
+        return;
+      }
+
+      if (checkData.exists) {
+        const errors = [];
+        if (checkData.studentIdExists) errors.push("Student ID already exists");
+        if (checkData.phoneExists) errors.push("Phone number already exists");
+        setError(errors.join(". "));
+        setSubmitting(false);
+        return;
+      }
+
       // Use admin API to create user without affecting current session
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
@@ -142,8 +189,7 @@ export default function AdminDashboard() {
           role: "student",
           name: studentName,
           student_id: studentId,
-          course: studentCourse,
-          year_of_study: studentYear,
+          course_id: studentCourseId,
           phone_number: studentPhone,
         }),
       });
@@ -163,8 +209,7 @@ export default function AdminDashboard() {
       setStudentPassword("");
       setStudentName("");
       setStudentId("");
-      setStudentCourse("");
-      setStudentYear("");
+      setStudentCourseId("");
       setStudentPhone("");
       setSubmitting(false);
     } catch (err: any) {
@@ -372,8 +417,11 @@ export default function AdminDashboard() {
                     type="text"
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
-                    placeholder="2402498"
+                    placeholder="e.g., 2402498"
                     required
+                    pattern="\d{7}"
+                    maxLength={7}
+                    title="Student ID must be exactly 7 digits"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
                   />
                 </div>
@@ -387,53 +435,46 @@ export default function AdminDashboard() {
                   type="email"
                   value={studentEmail}
                   onChange={(e) => setStudentEmail(e.target.value)}
-                  placeholder="student@sit.singaporetech.edu.sg"
+                  placeholder="e.g., 2402498@sit.singaporetech.edu.sg"
                   required
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-900 text-sm font-semibold mb-2">
-                    Course
-                  </label>
-                  <input
-                    type="text"
-                    value={studentCourse}
-                    onChange={(e) => setStudentCourse(e.target.value)}
-                    placeholder="Information Security"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-900 text-sm font-semibold mb-2">
-                    Year of Study
-                  </label>
-                  <select
-                    value={studentYear}
-                    onChange={(e) => setStudentYear(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
-                  >
-                    <option value="">Select</option>
-                    <option value="1">Year 1</option>
-                    <option value="2">Year 2</option>
-                    <option value="3">Year 3</option>
-                    <option value="4">Year 4</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-gray-900 text-sm font-semibold mb-2">
+                  Course *
+                </label>
+                <select
+                  value={studentCourseId}
+                  onChange={(e) => setStudentCourseId(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
+                >
+                  <option value="">
+                    {courses.length === 0 ? 'Loading courses...' : 'Select Course'}
+                  </option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.course_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <label className="block text-gray-900 text-sm font-semibold mb-2">
-                  Phone Number
+                  Phone Number *
                 </label>
                 <input
                   type="tel"
                   value={studentPhone}
                   onChange={(e) => setStudentPhone(e.target.value)}
-                  placeholder="+65 1234 5678"
+                  placeholder="e.g., 81234567"
+                  pattern="[89]\d{7}"
+                  maxLength={8}
+                  required
+                  title="Phone number must be 8 digits starting with 8 or 9"
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
                 />
               </div>

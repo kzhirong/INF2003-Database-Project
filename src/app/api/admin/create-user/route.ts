@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Get user data from request
     const body = await request.json();
-    const { email, password, role, name, student_id, course, year_of_study, phone_number, cca_id } = body;
+    const { email, password, role, name, student_id, course_id, phone_number, cca_id } = body;
 
     // Create admin client
     const adminClient = createAdminClient();
@@ -93,8 +93,7 @@ export async function POST(request: NextRequest) {
           user_id: newUser.user.id,
           name: name || 'Student',
           student_id: student_id || '',
-          course: course || '',
-          year_of_study: year_of_study ? parseInt(year_of_study) : 1,
+          course_id: course_id || '',
           phone_number: phone_number || null,
         });
 
