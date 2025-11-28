@@ -10,7 +10,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<"students" | "ccas" | "manage">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "ccas" | "manage" | "manage-students">("students");
 
   // Constants for CCA form
   const categories = ["Sports", "Arts & Culture", "Community Service", "Academic", "Special Interest"];
@@ -46,6 +46,10 @@ export default function AdminDashboard() {
   const [ccaList, setCcaList] = useState<any[]>([]);
   const [loadingCcas, setLoadingCcas] = useState(false);
 
+  // Student Management state
+  const [studentList, setStudentList] = useState<any[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
   useEffect(() => {
     checkAdminAccess();
     fetchCourses();
@@ -54,6 +58,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === "manage") {
       fetchCcas();
+    } else if (activeTab === "manage-students") {
+      fetchStudents();
     }
   }, [activeTab]);
 
@@ -66,6 +72,16 @@ export default function AdminDashboard() {
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  // Auto-dismiss error message after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const checkAdminAccess = async () => {
     try {
@@ -132,6 +148,41 @@ export default function AdminDashboard() {
       }
     } catch (err: any) {
       setError(`Failed to delete CCA: ${err.message}`);
+    }
+  };
+
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const response = await fetch('/api/admin/students');
+      const data = await response.json();
+      if (data.success) {
+        setStudentList(data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching students:", err);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const handleDeleteStudent = async (userId: string, studentName: string) => {
+    // Confirmation removed as requested
+    
+    try {
+      const response = await fetch(`/api/admin/students/${userId}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess(`Student "${studentName}" deleted successfully!`);
+        fetchStudents(); // Refresh the list
+      } else {
+        setError(`Failed to delete student: ${data.error}`);
+      }
+    } catch (err: any) {
+      setError(`Failed to delete student: ${err.message}`);
     }
   };
 
@@ -396,6 +447,16 @@ export default function AdminDashboard() {
             }`}
           >
             Register CCA Admin
+          </button>
+          <button
+            onClick={() => setActiveTab("manage-students")}
+            className={`px-6 py-3 font-semibold transition-colors cursor-pointer ${
+              activeTab === "manage-students"
+                ? "text-[#F44336] border-b-2 border-[#F44336]"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Manage Students
           </button>
           <button
             onClick={() => setActiveTab("manage")}
@@ -769,6 +830,80 @@ export default function AdminDashboard() {
                           </Link>
                           <button
                             onClick={() => handleDeleteCca(cca._id, cca.name)}
+                            className="text-red-600 hover:text-red-900 cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Manage Students Tab */}
+        {activeTab === "manage-students" && (
+          <div className="bg-white rounded-lg shadow-sm p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Manage Students</h2>
+
+            {loadingStudents ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#F44336] mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading students...</p>
+              </div>
+            ) : studentList.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">No students found. Register a student to get started.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Student ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone Number
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {studentList.map((student) => (
+                      <tr key={student.user_id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{student.student_id}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{student.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{student.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{student.phone_number}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <Link
+                            href={`/admin/students/${student.user_id}`}
+                            className="text-blue-600 hover:text-blue-900 mr-4"
+                          >
+                            Edit Details
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteStudent(student.user_id, student.name)}
                             className="text-red-600 hover:text-red-900 cursor-pointer"
                           >
                             Delete

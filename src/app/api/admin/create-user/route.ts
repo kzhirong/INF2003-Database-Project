@@ -80,9 +80,31 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       console.error('Error creating user:', createError);
+      console.error('Full error object:', JSON.stringify(createError, null, 2));
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to create user account';
+      
+      const errorMsg = createError.message?.toLowerCase() || '';
+      
+      // Check for duplicate email
+      if (errorMsg.includes('already') || 
+          errorMsg.includes('exists') ||
+          errorMsg.includes('duplicate') ||
+          errorMsg.includes('unique') ||
+          errorMsg.includes('constraint')) {
+        errorMessage = 'Email already exists';
+      } else if (errorMsg.includes('invalid') && errorMsg.includes('email')) {
+        errorMessage = 'Invalid email format';
+      } else if (errorMsg.includes('email')) {
+        errorMessage = 'Email error: ' + createError.message;
+      } else {
+        errorMessage = createError.message || 'Failed to create user account';
+      }
+      
       return NextResponse.json(
-        { success: false, error: createError.message },
-        { status: 500 }
+        { success: false, error: errorMessage },
+        { status: 400 }
       );
     }
 
