@@ -35,6 +35,39 @@ export async function POST(request: NextRequest) {
     // Create admin client
     const adminClient = createAdminClient();
 
+    // Check for duplicates before creating user (for students)
+    if (role === 'student') {
+      if (student_id) {
+        const { data: existingId } = await adminClient
+          .from('student_details')
+          .select('id')
+          .eq('student_id', student_id)
+          .maybeSingle();
+        
+        if (existingId) {
+          return NextResponse.json(
+            { success: false, error: 'Student ID already exists' },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (phone_number) {
+        const { data: existingPhone } = await adminClient
+          .from('student_details')
+          .select('id')
+          .eq('phone_number', phone_number)
+          .maybeSingle();
+        
+        if (existingPhone) {
+          return NextResponse.json(
+            { success: false, error: 'Phone number already exists' },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Create user using admin client (doesn't affect current session)
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
@@ -64,6 +97,8 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating user data:', updateError);
+      // Rollback: Delete the created user
+      await adminClient.auth.admin.deleteUser(newUser.user.id);
       return NextResponse.json(
         { success: false, error: `User created but failed to update profile: ${updateError.message}` },
         { status: 500 }
@@ -78,6 +113,8 @@ export async function POST(request: NextRequest) {
 
       if (adminDetailsError) {
         console.error('Error creating CCA admin details:', adminDetailsError);
+        // Rollback: Delete the created user
+        await adminClient.auth.admin.deleteUser(newUser.user.id);
         return NextResponse.json(
           { success: false, error: `User created but failed to create CCA admin details: ${adminDetailsError.message}` },
           { status: 500 }
@@ -99,8 +136,21 @@ export async function POST(request: NextRequest) {
 
       if (studentDetailsError) {
         console.error('Error creating student details:', studentDetailsError);
+        // Rollback: Delete the created user
+        await adminClient.auth.admin.deleteUser(newUser.user.id);
+        
+        // Return specific error message if it's a constraint violation
+        if (studentDetailsError.code === '23505') { // Unique violation
+           if (studentDetailsError.message.includes('student_id')) {
+             return NextResponse.json({ success: false, error: 'Student ID already exists' }, { status: 400 });
+           }
+           if (studentDetailsError.message.includes('phone_number')) {
+             return NextResponse.json({ success: false, error: 'Phone number already exists' }, { status: 400 });
+           }
+        }
+
         return NextResponse.json(
-          { success: false, error: `User created but failed to create student details: ${studentDetailsError.message}` },
+          { success: false, error: `Failed to create student details: ${studentDetailsError.message}` },
           { status: 500 }
         );
       }

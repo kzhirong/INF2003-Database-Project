@@ -93,7 +93,22 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
     );
   };
 
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Auto-dismiss success message after 5 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const handleSave = async () => {
+    setError("");
+    setSuccess("");
     try {
       setSaving(true);
 
@@ -143,12 +158,11 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
         }
       }
 
-      alert("✅ Changes saved successfully!");
-      router.push("/admin");
-
+      setSuccess("Changes saved successfully!");
+      // router.push("/admin"); // Removed immediate redirect to show success message
     } catch (error: any) {
       console.error("Error saving changes:", error);
-      alert(`❌ Error: ${error.message}`);
+      setError(error.message || "Failed to save changes");
     } finally {
       setSaving(false);
     }
@@ -178,11 +192,23 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
           </div>
           <button
             onClick={() => router.push('/admin')}
-            className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
           >
             Back to Dashboard
           </button>
         </div>
+
+        {/* Success/Error Messages */}
+        {error && (
+          <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            {success}
+          </div>
+        )}
 
         {/* Form Section */}
         <div className="bg-white rounded-lg shadow-sm p-8 space-y-8">
@@ -207,7 +233,7 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                  placeholder="e.g., BASKETBALL"
+                  placeholder="e.g., Basketball"
                 />
               </div>
 
@@ -325,7 +351,7 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                  placeholder="admin@example.com"
+                  placeholder="e.g., basketball@sit.singaporetech.edu.sg"
                 />
               </div>
 
@@ -350,7 +376,7 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
             <button
               type="button"
               onClick={() => router.push('/admin')}
-              className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -361,7 +387,7 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
               className={`px-6 py-2 rounded-lg font-semibold text-white transition-colors ${
                 saving
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-[#F44336] hover:bg-[#D32F2F]"
+                  : "bg-[#F44336] hover:bg-[#D32F2F] cursor-pointer"
               }`}
             >
               {saving ? "Saving..." : "Save Changes"}

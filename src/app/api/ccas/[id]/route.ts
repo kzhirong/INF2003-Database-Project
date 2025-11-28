@@ -204,7 +204,18 @@ export async function DELETE(
       .single();
 
     if (ccaAdminDetails) {
-      // Delete the user from Supabase Auth (this will cascade delete from users and cca_admin_details)
+      // Explicitly delete from public users table first to ensure it's removed
+      const { error: deletePublicError } = await adminClient
+        .from('users')
+        .delete()
+        .eq('id', ccaAdminDetails.user_id);
+
+      if (deletePublicError) {
+        console.error('Error deleting from public users table:', deletePublicError);
+        // We continue to delete from Auth even if this fails, to ensure access is revoked
+      }
+
+      // Delete the user from Supabase Auth
       const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(
         ccaAdminDetails.user_id
       );

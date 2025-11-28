@@ -99,6 +99,19 @@ export async function PUT(
       if (updateError) {
         return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
       }
+
+      // Sync email to public users table if changed
+      if (email) {
+        const { error: publicUpdateError } = await adminClient
+          .from('users')
+          .update({ email: email })
+          .eq('id', ccaAdminDetails.user_id);
+
+        if (publicUpdateError) {
+          console.error('Failed to sync email to public users table:', publicUpdateError);
+          // We don't fail the request here since auth update succeeded, but we log it
+        }
+      }
     }
 
     return NextResponse.json({ success: true });

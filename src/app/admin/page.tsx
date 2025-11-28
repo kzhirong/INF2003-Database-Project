@@ -116,10 +116,8 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteCca = async (ccaId: string, ccaName: string) => {
-    if (!confirm(`Are you sure you want to delete "${ccaName}"? This action cannot be undone.`)) {
-      return;
-    }
-
+    // Confirmation removed as requested
+    
     try {
       const response = await fetch(`/api/ccas/${ccaId}`, {
         method: 'DELETE',
@@ -226,6 +224,40 @@ export default function AdminDashboard() {
     setSubmitting(true);
 
     try {
+      // Validation: Check if Schedule Based is selected but no days are chosen
+      if (ccaCommitment === "Schedule Based" && ccaSchedule.length === 0) {
+        setError("Please select at least one day for the schedule.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Check for existing CCA Name and Email
+      const checkResponse = await fetch('/api/admin/check-cca-exists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: ccaName,
+          email: ccaEmail,
+        }),
+      });
+
+      const checkData = await checkResponse.json();
+
+      if (!checkData.success) {
+        setError(checkData.error || "Failed to validate CCA data");
+        setSubmitting(false);
+        return;
+      }
+
+      if (checkData.exists) {
+        const errors = [];
+        if (checkData.nameExists) errors.push("CCA Name already exists");
+        if (checkData.emailExists) errors.push("Email already exists");
+        setError(errors.join(". "));
+        setSubmitting(false);
+        return;
+      }
+
       console.log("Step 1: Creating CCA in MongoDB...");
       // Step 1: Create the CCA in MongoDB first
       const createCCAResponse = await fetch('/api/ccas', {
@@ -347,7 +379,7 @@ export default function AdminDashboard() {
         <div className="flex gap-4 mb-6 border-b border-gray-200">
           <button
             onClick={() => setActiveTab("students")}
-            className={`px-6 py-3 font-semibold transition-colors ${
+            className={`px-6 py-3 font-semibold transition-colors cursor-pointer ${
               activeTab === "students"
                 ? "text-[#F44336] border-b-2 border-[#F44336]"
                 : "text-gray-600 hover:text-gray-900"
@@ -357,7 +389,7 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveTab("ccas")}
-            className={`px-6 py-3 font-semibold transition-colors ${
+            className={`px-6 py-3 font-semibold transition-colors cursor-pointer ${
               activeTab === "ccas"
                 ? "text-[#F44336] border-b-2 border-[#F44336]"
                 : "text-gray-600 hover:text-gray-900"
@@ -367,7 +399,7 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveTab("manage")}
-            className={`px-6 py-3 font-semibold transition-colors ${
+            className={`px-6 py-3 font-semibold transition-colors cursor-pointer ${
               activeTab === "manage"
                 ? "text-[#F44336] border-b-2 border-[#F44336]"
                 : "text-gray-600 hover:text-gray-900"
@@ -403,7 +435,7 @@ export default function AdminDashboard() {
                     type="text"
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="John Doe"
+                    placeholder="e.g., John Doe"
                     required
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F44336]"
                   />
@@ -497,7 +529,7 @@ export default function AdminDashboard() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-[#F44336] hover:bg-[#D32F2F] text-white font-semibold py-3 px-8 rounded-lg transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#F44336] hover:bg-[#D32F2F] text-white font-semibold py-3 px-8 rounded-lg transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {submitting ? "Creating Account..." : "Create Student Account"}
               </button>
@@ -528,7 +560,7 @@ export default function AdminDashboard() {
                     type="text"
                     value={ccaName}
                     onChange={(e) => setCcaName(e.target.value)}
-                    placeholder="e.g., BASKETBALL"
+                    placeholder="e.g., Basketball"
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                   />
@@ -614,7 +646,7 @@ export default function AdminDashboard() {
                           key={day}
                           type="button"
                           onClick={() => handleScheduleToggle(day)}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
                             ccaSchedule.includes(day)
                               ? "bg-[#F44336] text-white"
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -642,7 +674,7 @@ export default function AdminDashboard() {
                     type="email"
                     value={ccaEmail}
                     onChange={(e) => setCcaEmail(e.target.value)}
-                    placeholder="basketball@sit.singaporetech.edu.sg"
+                    placeholder="e.g., basketball@sit.singaporetech.edu.sg"
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                   />
@@ -667,7 +699,7 @@ export default function AdminDashboard() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-[#F44336] hover:bg-[#D32F2F] text-white font-semibold py-3 px-8 rounded-lg transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#F44336] hover:bg-[#D32F2F] text-white font-semibold py-3 px-8 rounded-lg transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {submitting ? "Creating Account..." : "Create CCA Admin Account"}
               </button>
@@ -737,7 +769,7 @@ export default function AdminDashboard() {
                           </Link>
                           <button
                             onClick={() => handleDeleteCca(cca._id, cca.name)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-600 hover:text-red-900 cursor-pointer"
                           >
                             Delete
                           </button>
