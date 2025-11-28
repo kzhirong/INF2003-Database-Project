@@ -182,19 +182,19 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#F5F5F5] p-4 rounded-lg">
                     <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                      {ccaData?.stats?.currentMembers || 89}
+                      -
                     </div>
                     <div className="text-sm text-gray-600">
-                      Active CCA's
+                      Active Members (Coming Soon)
                     </div>
                   </div>
 
                   <div className="bg-[#F5F5F5] p-4 rounded-lg">
                     <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                      4
+                      -
                     </div>
                     <div className="text-sm text-gray-600">
-                      Upcoming Events
+                      Upcoming Events (Coming Soon)
                     </div>
                   </div>
                 </div>

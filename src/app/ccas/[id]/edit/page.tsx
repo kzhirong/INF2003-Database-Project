@@ -13,6 +13,8 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
   // Loading state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [userEmail, setUserEmail] = useState(""); // Store actual user email from Supabase
   const [userRole, setUserRole] = useState(""); // Store user role for permission checking
 
@@ -20,20 +22,18 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
   const [name, setName] = useState("");
   const [originalName, setOriginalName] = useState(""); // Store original name for display
   const [category, setCategory] = useState("Sports");
-  const [schedule, setSchedule] = useState<string[]>([]);
+  const [schedule, setSchedule] = useState<Array<{
+    day: string;
+    startTime: string;
+    endTime: string;
+    location: string;
+  }>>([]);
   const [commitment, setCommitment] = useState("Schedule Based");
   const [sportType, setSportType] = useState("Competitive");
 
   // Hero section
   const [heroImage, setHeroImage] = useState("");
   const [shortDescription, setShortDescription] = useState("");
-
-  // Meeting details (sidebar)
-  const [meetingTime, setMeetingTime] = useState("");
-  const [meetingLocation, setMeetingLocation] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [currentMembers, setCurrentMembers] = useState(0);
-  const [maxMembers, setMaxMembers] = useState(0);
 
   // Dynamic content blocks
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -85,11 +85,6 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         setSportType(cca.sportType || "Competitive");
         setHeroImage(cca.heroImage || "");
         setShortDescription(cca.shortDescription || "");
-        setMeetingTime(cca.meetingDetails?.time || "");
-        setMeetingLocation(cca.meetingDetails?.location || "");
-        setContactEmail(cca.meetingDetails?.contactEmail || "");
-        setCurrentMembers(cca.stats?.currentMembers || 0);
-        setMaxMembers(cca.stats?.maxMembers || 0);
         setBlocks(cca.blocks || []);
       } else {
         alert("Failed to load CCA data");
@@ -110,29 +105,64 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
   const sportTypes = ["Competitive", "Recreational", "Both"];
 
   const handleScheduleToggle = (day: string) => {
+    setSchedule((prev) => {
+      const existingIndex = prev.findIndex(s => s.day === day);
+      if (existingIndex >= 0) {
+        // Remove the day
+        return prev.filter(s => s.day !== day);
+      } else {
+        // Add the day with empty time/location (user will fill in)
+        return [...prev, { day, startTime: '', endTime: '', location: '' }];
+      }
+    });
+  };
+
+  const updateScheduleSession = (day: string, field: 'startTime' | 'endTime' | 'location', value: string) => {
     setSchedule((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+      prev.map(s => s.day === day ? { ...s, [field]: value } : s)
     );
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
+      setError("");
+      setSuccess("");
+
+      // Validation: Check if Schedule Based is selected but no days are chosen
+      if (commitment === "Schedule Based" && schedule.length === 0) {
+        setError("Please select at least one day for the schedule.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Auto-dismiss validation error after 5 seconds
+        setTimeout(() => {
+          setError("");
+        }, 5000);
+        setSaving(false);
+        return;
+      }
+
+      // Validation: Check if all schedule entries have time and location filled
+      if (commitment === "Schedule Based") {
+        const incompleteSchedule = schedule.find(
+          s => !s.startTime || !s.endTime || !s.location
+        );
+        if (incompleteSchedule) {
+          setError(`Please fill in start time, end time, and location for ${incompleteSchedule.day}.`);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // Auto-dismiss validation error after 5 seconds
+          setTimeout(() => {
+            setError("");
+          }, 5000);
+          setSaving(false);
+          return;
+        }
+      }
 
       // Build the CCA data object
       const ccaData: any = {
         _id: resolvedParams.id,
         heroImage,
         shortDescription,
-        meetingDetails: {
-          time: meetingTime,
-          location: meetingLocation,
-          contactEmail: contactEmail
-        },
-        stats: {
-          currentMembers,
-          maxMembers
-        },
         blocks
       };
 
@@ -140,7 +170,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
       if (userRole === 'system_admin') {
         ccaData.name = name;
         ccaData.category = category;
-        
+
         // Only include sportType for Sports category, otherwise set to null to clear it
         if (category === "Sports") {
           ccaData.sportType = sportType;
@@ -168,14 +198,37 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
       const data = await response.json();
 
       if (data.success) {
-        alert("✅ Changes saved successfully!");
-        router.push(`/ccas/${resolvedParams.id}`);
+        setSuccess("Changes saved successfully!");
+        // Scroll to top to show success message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        if (userRole === 'system_admin') {
+          // System admin: redirect to CCA detail page after 1.5s
+          setTimeout(() => {
+            router.push(`/ccas/${resolvedParams.id}`);
+          }, 1500);
+        } else {
+          // CCA admin: auto-dismiss success message after 3 seconds
+          setTimeout(() => {
+            setSuccess("");
+          }, 3000);
+        }
       } else {
-        alert(`❌ Error: ${data.error}`);
+        setError(data.error || "Failed to save changes");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Auto-dismiss error after 5 seconds for both roles
+        setTimeout(() => {
+          setError("");
+        }, 5000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving CCA:", error);
-      alert("❌ Failed to save changes");
+      setError(error.message || "Failed to save changes");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Auto-dismiss error after 5 seconds for both roles
+      setTimeout(() => {
+        setError("");
+      }, 5000);
     } finally {
       setSaving(false);
     }
@@ -283,6 +336,18 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         </div>
 
         <div className="px-4 sm:px-8 md:px-16 lg:px-24">
+          {/* Success/Error Messages */}
+          {error && (
+            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+              {success}
+            </div>
+          )}
+
           <div className="space-y-8">
             {/* Fixed Information Section */}
             <div className="bg-white rounded-lg shadow-sm p-8">
@@ -438,21 +503,70 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Schedule *
                     </label>
-                    <div className="flex flex-wrap gap-3">
-                      {daysOfWeek.map((day) => (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => handleScheduleToggle(day)}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                            schedule.includes(day)
-                              ? "bg-[#F44336] text-white"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {day.slice(0, 3)}
-                        </button>
-                      ))}
+                    <div className="space-y-4">
+                      {daysOfWeek.map((day) => {
+                        const session = schedule.find(s => s.day === day);
+                        const isSelected = !!session;
+
+                        return (
+                          <div key={day} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center mb-3">
+                              <input
+                                type="checkbox"
+                                id={`day-${day}`}
+                                checked={isSelected}
+                                onChange={() => handleScheduleToggle(day)}
+                                className="w-4 h-4 text-[#F44336] border-gray-300 rounded focus:ring-[#F44336] cursor-pointer"
+                              />
+                              <label htmlFor={`day-${day}`} className="ml-2 font-medium text-gray-900 cursor-pointer">
+                                {day}
+                              </label>
+                            </div>
+
+                            {isSelected && (
+                              <div className="ml-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Start Time *
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={session?.startTime || ''}
+                                    onChange={(e) => updateScheduleSession(day, 'startTime', e.target.value)}
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    End Time *
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={session?.endTime || ''}
+                                    onChange={(e) => updateScheduleSession(day, 'endTime', e.target.value)}
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Location *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={session?.location || ''}
+                                    onChange={(e) => updateScheduleSession(day, 'location', e.target.value)}
+                                    placeholder="e.g., Sports Hall, Level 1"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -494,83 +608,6 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                     placeholder="Brief description shown on hero section"
                   />
-                </div>
-              </div>
-            </div>
-
-            {/* Meeting Details Section */}
-            <div className="bg-white rounded-lg shadow-sm p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b-2 border-[#F44336]">
-                Meeting Details
-              </h2>
-              <p className="text-sm text-gray-500 mb-6">
-                This information appears in the sidebar
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Meeting Time
-                  </label>
-                  <input
-                    type="text"
-                    value={meetingTime}
-                    onChange={(e) => setMeetingTime(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    placeholder="e.g., Monday & Wednesday, 6:00 PM - 8:00 PM"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Meeting Location
-                  </label>
-                  <input
-                    type="text"
-                    value={meetingLocation}
-                    onChange={(e) => setMeetingLocation(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    placeholder="e.g., Sports Hall, Level 1"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Contact Email
-                  </label>
-                  <input
-                    type="email"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    placeholder="e.g., basketball@sit.edu.sg"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Current Members
-                    </label>
-                    <input
-                      type="number"
-                      value={currentMembers}
-                      onChange={(e) => setCurrentMembers(parseInt(e.target.value))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Max Members
-                    </label>
-                    <input
-                      type="number"
-                      value={maxMembers}
-                      onChange={(e) => setMaxMembers(parseInt(e.target.value))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    />
-                  </div>
                 </div>
               </div>
             </div>

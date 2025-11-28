@@ -35,7 +35,12 @@ export default function AdminDashboard() {
   const [ccaName, setCcaName] = useState("");
   const [ccaCategory, setCcaCategory] = useState("Sports");
   const [ccaCommitment, setCcaCommitment] = useState("Schedule Based");
-  const [ccaSchedule, setCcaSchedule] = useState<string[]>([]);
+  const [ccaSchedule, setCcaSchedule] = useState<Array<{
+    day: string;
+    startTime: string;
+    endTime: string;
+    location: string;
+  }>>([]);
   const [ccaSportType, setCcaSportType] = useState("Competitive");
 
   const [error, setError] = useState("");
@@ -133,7 +138,7 @@ export default function AdminDashboard() {
 
   const handleDeleteCca = async (ccaId: string, ccaName: string) => {
     // Confirmation removed as requested
-    
+
     try {
       const response = await fetch(`/api/ccas/${ccaId}`, {
         method: 'DELETE',
@@ -142,12 +147,15 @@ export default function AdminDashboard() {
 
       if (data.success) {
         setSuccess(`CCA "${ccaName}" deleted successfully!`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         fetchCcas(); // Refresh the list
       } else {
         setError(`Failed to delete CCA: ${data.error}`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err: any) {
       setError(`Failed to delete CCA: ${err.message}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -168,7 +176,7 @@ export default function AdminDashboard() {
 
   const handleDeleteStudent = async (userId: string, studentName: string) => {
     // Confirmation removed as requested
-    
+
     try {
       const response = await fetch(`/api/admin/students/${userId}`, {
         method: 'DELETE',
@@ -177,20 +185,36 @@ export default function AdminDashboard() {
 
       if (data.success) {
         setSuccess(`Student "${studentName}" deleted successfully!`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         fetchStudents(); // Refresh the list
       } else {
         setError(`Failed to delete student: ${data.error}`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err: any) {
       setError(`Failed to delete student: ${err.message}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
 
 
   const handleScheduleToggle = (day: string) => {
+    setCcaSchedule((prev) => {
+      const existingIndex = prev.findIndex(s => s.day === day);
+      if (existingIndex >= 0) {
+        // Remove the day
+        return prev.filter(s => s.day !== day);
+      } else {
+        // Add the day with empty time/location (user will fill in)
+        return [...prev, { day, startTime: '', endTime: '', location: '' }];
+      }
+    });
+  };
+
+  const updateScheduleSession = (day: string, field: 'startTime' | 'endTime' | 'location', value: string) => {
     setCcaSchedule((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+      prev.map(s => s.day === day ? { ...s, [field]: value } : s)
     );
   };
 
@@ -215,6 +239,7 @@ export default function AdminDashboard() {
 
       if (!checkData.success) {
         setError(checkData.error || "Failed to validate student data");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
       }
@@ -224,6 +249,7 @@ export default function AdminDashboard() {
         if (checkData.studentIdExists) errors.push("Student ID already exists");
         if (checkData.phoneExists) errors.push("Phone number already exists");
         setError(errors.join(". "));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
       }
@@ -248,11 +274,13 @@ export default function AdminDashboard() {
       if (!data.success) {
         console.error("Student creation error:", data);
         setError(data.error || "Failed to create student account");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
       }
 
       setSuccess(`Student account created successfully for ${studentName}!`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       // Clear form
       setStudentEmail("");
       setStudentPassword("");
@@ -264,6 +292,7 @@ export default function AdminDashboard() {
     } catch (err: any) {
       console.error("Student creation error:", err);
       setError(err.message || "Failed to create student account");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setSubmitting(false);
     }
   };
@@ -278,8 +307,22 @@ export default function AdminDashboard() {
       // Validation: Check if Schedule Based is selected but no days are chosen
       if (ccaCommitment === "Schedule Based" && ccaSchedule.length === 0) {
         setError("Please select at least one day for the schedule.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
+      }
+
+      // Validation: Check if all schedule entries have time and location filled
+      if (ccaCommitment === "Schedule Based") {
+        const incompleteSchedule = ccaSchedule.find(
+          s => !s.startTime || !s.endTime || !s.location
+        );
+        if (incompleteSchedule) {
+          setError(`Please fill in start time, end time, and location for ${incompleteSchedule.day}.`);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setSubmitting(false);
+          return;
+        }
       }
 
       // Check for existing CCA Name and Email
@@ -296,6 +339,7 @@ export default function AdminDashboard() {
 
       if (!checkData.success) {
         setError(checkData.error || "Failed to validate CCA data");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
       }
@@ -305,35 +349,30 @@ export default function AdminDashboard() {
         if (checkData.nameExists) errors.push("CCA Name already exists");
         if (checkData.emailExists) errors.push("Email already exists");
         setError(errors.join(". "));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
       }
 
       console.log("Step 1: Creating CCA in MongoDB...");
+
+      // Prepare the CCA payload
+      const ccaPayload = {
+        name: ccaName,
+        category: ccaCategory,
+        commitment: ccaCommitment,
+        ...(ccaCategory === "Sports" && { sportType: ccaSportType }),
+        ...(ccaCommitment === "Schedule Based" && { schedule: ccaSchedule })
+      };
+
+      console.log("CCA Payload:", JSON.stringify(ccaPayload, null, 2));
+
       // Step 1: Create the CCA in MongoDB first
       const createCCAResponse = await fetch('/api/ccas', {
         method: 'POST',
         credentials: 'include', // Include cookies for authentication
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: ccaName,
-          category: ccaCategory,
-          schedule: ccaCommitment === "Schedule Based" ? ccaSchedule : [],
-          commitment: ccaCommitment,
-          sportType: ccaCategory === "Sports" ? ccaSportType : undefined,
-          heroImage: '',
-          shortDescription: `Welcome to ${ccaName}!`,
-          meetingDetails: {
-            time: 'TBD',
-            location: 'TBD',
-            contactEmail: ccaEmail,
-          },
-          stats: {
-            currentMembers: 0,
-            maxMembers: 30,
-          },
-          blocks: [],
-        }),
+        body: JSON.stringify(ccaPayload),
       });
 
       console.log("CCA Response status:", createCCAResponse.status);
@@ -356,6 +395,7 @@ export default function AdminDashboard() {
       if (!ccaData.success) {
         console.error("CCA creation failed:", ccaData);
         setError("Failed to create CCA: " + (ccaData.error || JSON.stringify(ccaData)));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
       }
@@ -383,12 +423,14 @@ export default function AdminDashboard() {
       if (!userData.success) {
         console.error("User creation error:", userData);
         setError("CCA created, but failed to create admin account: " + (userData.error || JSON.stringify(userData)));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setSubmitting(false);
         return;
       }
 
       console.log("All steps completed successfully!");
       setSuccess(`CCA "${ccaName}" and admin account created successfully! CCA ID: ${newCcaId}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       // Clear form
       setCcaEmail("");
       setCcaPassword("");
@@ -402,6 +444,7 @@ export default function AdminDashboard() {
       console.error("Create CCA error (caught):", err);
       console.error("Error stack:", err.stack);
       setError(err.message || "Failed to create CCA and admin account");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setSubmitting(false);
     }
   };
@@ -701,21 +744,70 @@ export default function AdminDashboard() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Schedule *
                     </label>
-                    <div className="flex flex-wrap gap-3">
-                      {daysOfWeek.map((day) => (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => handleScheduleToggle(day)}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
-                            ccaSchedule.includes(day)
-                              ? "bg-[#F44336] text-white"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {day.slice(0, 3)}
-                        </button>
-                      ))}
+                    <div className="space-y-4">
+                      {daysOfWeek.map((day) => {
+                        const session = ccaSchedule.find(s => s.day === day);
+                        const isSelected = !!session;
+
+                        return (
+                          <div key={day} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center mb-3">
+                              <input
+                                type="checkbox"
+                                id={`day-${day}`}
+                                checked={isSelected}
+                                onChange={() => handleScheduleToggle(day)}
+                                className="w-4 h-4 text-[#F44336] border-gray-300 rounded focus:ring-[#F44336] cursor-pointer"
+                              />
+                              <label htmlFor={`day-${day}`} className="ml-2 font-medium text-gray-900 cursor-pointer">
+                                {day}
+                              </label>
+                            </div>
+
+                            {isSelected && (
+                              <div className="ml-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Start Time *
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={session?.startTime || ''}
+                                    onChange={(e) => updateScheduleSession(day, 'startTime', e.target.value)}
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    End Time *
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={session?.endTime || ''}
+                                    onChange={(e) => updateScheduleSession(day, 'endTime', e.target.value)}
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Location *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={session?.location || ''}
+                                    onChange={(e) => updateScheduleSession(day, 'location', e.target.value)}
+                                    placeholder="e.g., Sports Hall, Level 1"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -794,10 +886,7 @@ export default function AdminDashboard() {
                         Category
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Members
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contact Email
+                        Commitment
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -814,12 +903,7 @@ export default function AdminDashboard() {
                           <div className="text-sm text-gray-900">{cca.category}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {cca.stats?.currentMembers || 0} / {cca.stats?.maxMembers || 30}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{cca.meetingDetails?.contactEmail || 'N/A'}</div>
+                          <div className="text-sm text-gray-900">{cca.commitment}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <Link

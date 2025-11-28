@@ -18,8 +18,16 @@ const ccaSchema = new mongoose.Schema({
     enum: ['Sports', 'Arts & Culture', 'Academic', 'Community Service', 'Special Interest']
   },
   schedule: {
-    type: [String],
-    required: true
+    type: [{
+      day: {
+        type: String,
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      },
+      startTime: String,  // "18:00" (24-hour format from <input type="time">)
+      endTime: String,    // "20:00" (24-hour format from <input type="time">)
+      location: String    // "Sports Hall, Level 1"
+    }],
+    required: false  // Only required for "Schedule Based" commitment
   },
   commitment: {
     type: String,
@@ -32,19 +40,9 @@ const ccaSchema = new mongoose.Schema({
   },
   heroImage: String,
   shortDescription: String,
-  meetingDetails: {
-    time: String,
-    location: String,
-    contactEmail: String
-  },
-  stats: {
-    currentMembers: Number,
-    maxMembers: Number
-  },
   // Dynamic content blocks - stored as flexible array
   blocks: {
-    type: [mongoose.Schema.Types.Mixed], // Allows flexible structure
-    default: []
+    type: [mongoose.Schema.Types.Mixed] // Allows flexible structure
   },
   // Metadata
   createdBy: {
@@ -64,7 +62,12 @@ const ccaSchema = new mongoose.Schema({
   timestamps: false // We're handling timestamps manually
 });
 
-// Create or use existing model
-const CCA = mongoose.models.CCA || mongoose.model('CCA', ccaSchema);
+// Clear cached model to ensure schema changes are applied
+if (mongoose.models.CCA) {
+  delete mongoose.models.CCA;
+}
+
+// Create model with updated schema
+const CCA = mongoose.model('CCA', ccaSchema);
 
 export default CCA;

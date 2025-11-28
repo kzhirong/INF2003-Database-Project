@@ -15,20 +15,24 @@ export async function POST() {
         _id: 'basketball',
         name: 'BASKETBALL',
         category: 'Sports',
-        schedule: ['Monday', 'Wednesday'],
+        schedule: [
+          {
+            day: 'Monday',
+            startTime: '18:00',
+            endTime: '20:00',
+            location: 'Sports Hall, Level 1'
+          },
+          {
+            day: 'Wednesday',
+            startTime: '18:00',
+            endTime: '20:00',
+            location: 'Sports Hall, Level 1'
+          }
+        ],
         commitment: 'Schedule Based',
         sportType: 'Competitive',
         heroImage: '/basketball-hero.jpg',
         shortDescription: 'Join our competitive basketball team and represent SIT in inter-varsity competitions!',
-        meetingDetails: {
-          time: 'Monday & Wednesday, 6:00 PM - 8:00 PM',
-          location: 'Sports Hall, Level 1',
-          contactEmail: 'basketball@sit.edu.sg'
-        },
-        stats: {
-          currentMembers: 24,
-          maxMembers: 30
-        },
         blocks: [
           {
             id: 'block-1',
@@ -111,20 +115,30 @@ export async function POST() {
         _id: 'dragon-boat',
         name: 'DRAGON BOAT',
         category: 'Sports',
-        schedule: ['Tuesday', 'Thursday', 'Saturday'],
+        schedule: [
+          {
+            day: 'Tuesday',
+            startTime: '05:30',
+            endTime: '07:00',
+            location: 'Marina Bay'
+          },
+          {
+            day: 'Thursday',
+            startTime: '05:30',
+            endTime: '07:00',
+            location: 'Marina Bay'
+          },
+          {
+            day: 'Saturday',
+            startTime: '05:30',
+            endTime: '07:30',
+            location: 'Marina Bay'
+          }
+        ],
         commitment: 'Schedule Based',
         sportType: 'Competitive',
         heroImage: '/dragon-boat-hero.jpg',
         shortDescription: 'Experience the thrill of dragon boating - a water sport that combines strength, rhythm, and teamwork!',
-        meetingDetails: {
-          time: 'Tuesday, Thursday & Saturday, 5:30 AM',
-          location: 'Marina Bay',
-          contactEmail: 'dragonboat@sit.edu.sg'
-        },
-        stats: {
-          currentMembers: 30,
-          maxMembers: 40
-        },
         blocks: [
           {
             id: 'block-1',
@@ -172,19 +186,9 @@ export async function POST() {
         _id: 'drama-club',
         name: 'DRAMA CLUB',
         category: 'Arts & Culture',
-        schedule: ['Friday'],
         commitment: 'Flexible',
         heroImage: '/drama-hero.jpg',
         shortDescription: 'Unleash your creativity and passion for performing arts with SIT Drama Club!',
-        meetingDetails: {
-          time: 'Friday, 6:00 PM - 9:00 PM',
-          location: 'Drama Studio, Block B',
-          contactEmail: 'drama@sit.edu.sg'
-        },
-        stats: {
-          currentMembers: 18,
-          maxMembers: 25
-        },
         blocks: [
           {
             id: 'block-1',

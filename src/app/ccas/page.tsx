@@ -4,11 +4,18 @@ import NavbarClient from "@/components/NavbarClient";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 
+interface ScheduleSession {
+  day: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+}
+
 interface CCA {
   _id: string;
   name: string;
   category: string;
-  schedule: string[];
+  schedule?: ScheduleSession[];
   commitment: string;
   sportType?: string;
   shortDescription?: string;
@@ -62,7 +69,9 @@ export default function CCAs() {
   const filteredCCAs = ccaItems.filter((cca) => {
     const matchesSearch = cca.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(cca.category);
-    const matchesSchedule = selectedSchedule.length === 0 || selectedSchedule.some((day) => cca.schedule.includes(day));
+    const matchesSchedule = selectedSchedule.length === 0 || selectedSchedule.some((day) =>
+      cca.schedule?.some(session => session.day === day)
+    );
     const matchesCommitment = selectedCommitment.length === 0 || selectedCommitment.includes(cca.commitment);
     const matchesSportType = selectedSportType.length === 0 || (cca.sportType && selectedSportType.includes(cca.sportType));
 
