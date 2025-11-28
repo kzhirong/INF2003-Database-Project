@@ -90,13 +90,16 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
           <div className="flex items-center justify-between gap-6">
             {/* Left: Profile Picture and User Info */}
             <div className="flex items-center gap-6">
-              {/* Profile Picture - Placeholder */}
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face"
-                  alt="CCA Admin"
-                  className="w-full h-full object-cover"
-                />
+              {/* Profile Picture - Placeholder with CCA initials */}
+              <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 flex-shrink-0">
+                {(() => {
+                  const ccaName = ccaData?.name || 'CCA';
+                  const names = ccaName.trim().split(' ');
+                  if (names.length >= 2) {
+                    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+                  }
+                  return ccaName.substring(0, 2).toUpperCase();
+                })()}
               </div>
 
               {/* User Info */}
