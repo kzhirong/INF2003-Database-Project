@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getUserData } from "@/lib/auth";
 import NavbarClient from "@/components/NavbarClient";
+import TimePicker from "@/components/TimePicker";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -206,8 +207,8 @@ export default function AdminDashboard() {
         // Remove the day
         return prev.filter(s => s.day !== day);
       } else {
-        // Add the day with empty time/location (user will fill in)
-        return [...prev, { day, startTime: '', endTime: '', location: '' }];
+        // Add the day with default time (12:00 PM - 1:00 PM)
+        return [...prev, { day, startTime: '12:00', endTime: '13:00', location: '' }];
       }
     });
   };
@@ -323,6 +324,17 @@ export default function AdminDashboard() {
           setSubmitting(false);
           return;
         }
+
+        // Validation: Check if start time is before end time
+        const invalidTimeSchedule = ccaSchedule.find(
+          s => s.startTime >= s.endTime
+        );
+        if (invalidTimeSchedule) {
+          setError(`Start time must be before end time for ${invalidTimeSchedule.day}.`);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setSubmitting(false);
+          return;
+        }
       }
 
       // Check for existing CCA Name and Email
@@ -429,7 +441,7 @@ export default function AdminDashboard() {
       }
 
       console.log("All steps completed successfully!");
-      setSuccess(`CCA "${ccaName}" and admin account created successfully! CCA ID: ${newCcaId}`);
+      setSuccess(`CCA "${ccaName}" and admin account created successfully!`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       // Clear form
       setCcaEmail("");
@@ -779,30 +791,26 @@ export default function AdminDashboard() {
                             </div>
 
                             {isSelected && (
-                              <div className="ml-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    Start Time *
-                                  </label>
-                                  <input
-                                    type="time"
-                                    value={session?.startTime || ''}
-                                    onChange={(e) => updateScheduleSession(day, 'startTime', e.target.value)}
-                                    required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    End Time *
-                                  </label>
-                                  <input
-                                    type="time"
-                                    value={session?.endTime || ''}
-                                    onChange={(e) => updateScheduleSession(day, 'endTime', e.target.value)}
-                                    required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                                  />
+                              <div className="ml-6 space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      Start Time *
+                                    </label>
+                                    <TimePicker
+                                      value={session?.startTime || ''}
+                                      onChange={(val) => updateScheduleSession(day, 'startTime', val)}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      End Time *
+                                    </label>
+                                    <TimePicker
+                                      value={session?.endTime || ''}
+                                      onChange={(val) => updateScheduleSession(day, 'endTime', val)}
+                                    />
+                                  </div>
                                 </div>
                                 <div>
                                   <label className="block text-xs font-medium text-gray-700 mb-1">

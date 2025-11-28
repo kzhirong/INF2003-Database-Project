@@ -134,10 +134,12 @@ export default function AdminEditStudentPage({ params }: { params: Promise<{ use
       }
 
       setSuccess("Changes saved successfully!");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setPassword(""); // Clear password field after successful save
     } catch (error: any) {
       console.error("Error saving changes:", error);
       setError(error.message || "Failed to save changes");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
