@@ -183,16 +183,10 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                 My Members
               </button>
               <button
-                onClick={() => router.push(`/cca-admin/${resolvedParams.id}/events`)}
+                onClick={() => router.push(`/ccas/${resolvedParams.id}/edit`)}
                 className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                Events
-              </button>
-              <button
-                onClick={() => router.push(`/cca-admin/${resolvedParams.id}/sessions`)}
-                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Sessions
+                Manage Page
               </button>
             </div>
           </div>
