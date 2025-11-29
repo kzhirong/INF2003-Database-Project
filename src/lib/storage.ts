@@ -80,8 +80,11 @@ export async function uploadEventPoster(
  * @param path - The file path in storage (e.g., "event-123.jpg")
  * @returns True if deleted successfully
  */
-export async function deleteEventPoster(path: string): Promise<boolean> {
-  const supabase = createClient();
+export async function deleteEventPoster(
+  path: string,
+  supabaseClient?: any
+): Promise<boolean> {
+  const supabase = supabaseClient || createClient();
 
   const { error } = await supabase.storage.from(BUCKET_NAME).remove([path]);
 
@@ -91,6 +94,26 @@ export async function deleteEventPoster(path: string): Promise<boolean> {
   }
 
   return true;
+}
+
+/**
+ * Extract file path from public URL
+ * @param url - The full public URL
+ * @returns The file path or null if invalid
+ */
+export function getPathFromUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    const bucketIndex = pathParts.indexOf(BUCKET_NAME);
+    
+    if (bucketIndex !== -1 && bucketIndex < pathParts.length - 1) {
+      return decodeURIComponent(pathParts.slice(bucketIndex + 1).join('/'));
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 /**

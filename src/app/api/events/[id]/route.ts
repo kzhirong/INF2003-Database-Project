@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import connectDB from '@/lib/mongoose';
 import CCA from '@/models/CCA';
+import { deleteEventPoster, getPathFromUrl } from '@/lib/storage';
 
 // GET /api/events/[id] - Get single event details
 export async function GET(
@@ -101,10 +102,10 @@ export async function PUT(
       );
     }
 
-    // Get event to check ownership
+    // Get event to check ownership and get current poster
     const { data: event } = await supabase
       .from('events')
-      .select('cca_id')
+      .select('cca_id, poster_url')
       .eq('id', id)
       .single();
 
@@ -130,6 +131,14 @@ export async function PUT(
     }
 
     const body = await request.json();
+
+    // Delete old poster if URL changed
+    if (body.poster_url && event.poster_url && body.poster_url !== event.poster_url) {
+      const oldPath = getPathFromUrl(event.poster_url);
+      if (oldPath) {
+        await deleteEventPoster(oldPath, supabase);
+      }
+    }
 
     // Update event
     const { data: updatedEvent, error } = await supabase
@@ -185,10 +194,10 @@ export async function DELETE(
       );
     }
 
-    // Get event to check ownership
+    // Get event to check ownership and get poster
     const { data: event } = await supabase
       .from('events')
-      .select('cca_id')
+      .select('cca_id, poster_url')
       .eq('id', id)
       .single();
 
@@ -211,6 +220,14 @@ export async function DELETE(
         { success: false, error: 'Forbidden - You can only delete events for your CCA' },
         { status: 403 }
       );
+    }
+
+    // Delete poster if exists
+    if (event.poster_url) {
+      const path = getPathFromUrl(event.poster_url);
+      if (path) {
+        await deleteEventPoster(path, supabase);
+      }
     }
 
     // Delete event (cascade deletes attendance records)

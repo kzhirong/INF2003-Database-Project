@@ -176,6 +176,12 @@ export default function NavbarClient() {
                 MY MEMBERS
               </Link>
               <Link
+                href={`/cca-admin/${userData.cca_id}/analytics`}
+                className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
+              >
+                ANALYTICS
+              </Link>
+              <Link
                 href={`/ccas/${userData.cca_id}/edit`}
                 className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
               >

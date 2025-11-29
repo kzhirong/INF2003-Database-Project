@@ -246,7 +246,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                   <div className="text-center py-8 bg-gray-50 rounded-lg">
                     <p className="text-gray-600 mb-4">No upcoming sessions</p>
                     <button
-                      onClick={() => router.push(`/cca-admin/${resolvedParams.id}/sessions`)}
+                      onClick={() => router.push(`/cca-admin/${resolvedParams.id}/sessions/create`)}
                       className="px-6 py-2 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors"
                     >
                       Create Session
@@ -315,7 +315,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
-                      router.push(`/cca-admin/${resolvedParams.id}/sessions`);
+                      router.push(`/cca-admin/${resolvedParams.id}/sessions/create`);
                     }}
                     className="w-full bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"
                   >

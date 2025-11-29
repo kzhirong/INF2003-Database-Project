@@ -5,16 +5,18 @@ import { redirect, useRouter } from 'next/navigation';
 import NavbarClient from '@/components/NavbarClient';
 import TimePicker from '@/components/TimePicker';
 import { getUserData } from '@/lib/auth';
+import Image from 'next/image';
 
-export default function CreateEventPage({
+export default function EditEventPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; eventId: string }>;
 }) {
-  const { id: ccaId } = use(params);
+  const { id: ccaId, eventId } = use(params);
   const router = useRouter();
 
   const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
@@ -32,6 +34,8 @@ export default function CreateEventPage({
     max_attendees: '',
     registration_deadline: '',
     poster: null as File | null,
+    current_poster_url: '',
+    status: 'published',
   });
 
   useEffect(() => {
@@ -51,8 +55,45 @@ export default function CreateEventPage({
     checkAuth();
   }, [ccaId]);
 
+  useEffect(() => {
+    if (!userData) return;
+    fetchEventDetails();
+  }, [userData, eventId]);
+
+  const fetchEventDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/events/${eventId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const event = result.data;
+        setFormData({
+          title: event.title,
+          description: event.description || '',
+          date: new Date(event.date).toISOString().split('T')[0],
+          start_time: event.start_time,
+          end_time: event.end_time,
+          location: event.location,
+          max_attendees: event.max_attendees ? event.max_attendees.toString() : '',
+          registration_deadline: event.registration_deadline || '',
+          poster: null,
+          current_poster_url: event.poster_url || '',
+          status: event.status,
+        });
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to fetch event details' });
+      }
+    } catch (error) {
+      console.error('Error fetching event:', error);
+      setMessage({ type: 'error', text: 'Failed to fetch event details' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -85,11 +126,34 @@ export default function CreateEventPage({
       return;
     }
 
-    // 2. Registration deadline validation removed as requested
+    // 2. Registration deadline validation
+    if (formData.registration_deadline) {
+      const regDeadline = new Date(formData.registration_deadline);
+      
+      if (regDeadline < now) {
+        setMessage({
+          type: 'error',
+          text: 'Registration deadline cannot be in the past.',
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setSubmitting(false);
+        return;
+      }
+
+      if (regDeadline > eventDateTime) {
+        setMessage({
+          type: 'error',
+          text: 'Registration deadline must be before the event starts.',
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setSubmitting(false);
+        return;
+      }
+    }
 
     try {
       // Upload poster if exists
-      let poster_url = null;
+      let poster_url = formData.current_poster_url;
       if (formData.poster) {
         const uploadFormData = new FormData();
         uploadFormData.append('file', formData.poster);
@@ -100,18 +164,17 @@ export default function CreateEventPage({
         });
         const uploadResult = await uploadResponse.json();
 
-        if (!uploadResult.success) {
+        if (uploadResult.error) {
           throw new Error(uploadResult.error || 'Failed to upload poster');
         }
         poster_url = uploadResult.url;
       }
 
-      // Create event
-      const response = await fetch('/api/events', {
-        method: 'POST',
+      // Update event
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cca_id: ccaId,
           title: formData.title,
           description: formData.description,
           date: formData.date,
@@ -123,6 +186,7 @@ export default function CreateEventPage({
             : null,
           registration_deadline: formData.registration_deadline || null,
           poster_url,
+          status: formData.status,
         }),
       });
 
@@ -131,17 +195,17 @@ export default function CreateEventPage({
       if (result.success) {
         setMessage({
           type: 'success',
-          text: 'Event created successfully!',
+          text: 'Event updated successfully!',
         });
         router.push(`/cca-admin/${ccaId}/events`);
       } else {
         setMessage({ type: 'error', text: result.error });
       }
     } catch (error: any) {
-      console.error('Error creating event:', error);
+      console.error('Error updating event:', error);
       setMessage({
         type: 'error',
-        text: error.message || 'Failed to create event',
+        text: error.message || 'Failed to update event',
       });
     } finally {
       setSubmitting(false);
@@ -156,8 +220,12 @@ export default function CreateEventPage({
     }
   }, [message]);
 
-  if (!userData) {
-    return null;
+  if (!userData || loading) {
+    return (
+        <div className="min-h-screen bg-[#FAFBFD] flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F44336]"></div>
+        </div>
+    );
   }
 
   return (
@@ -181,16 +249,16 @@ export default function CreateEventPage({
             EVENTS
           </span>
           <span className="mx-2">|</span>
-          <span className="text-gray-900 font-semibold">CREATE</span>
+          <span className="text-gray-900 font-semibold">EDIT</span>
         </div>
 
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Create New Event
+            Edit Event
           </h1>
           <p className="text-gray-600">
-            Fill in the details below to create a new event for your CCA
+            Update the details of your event
           </p>
         </div>
 
@@ -254,6 +322,16 @@ export default function CreateEventPage({
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Event Poster
                   </label>
+                  {formData.current_poster_url && (
+                    <div className="mb-4 relative w-48 h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        <Image 
+                            src={formData.current_poster_url} 
+                            alt="Current Poster" 
+                            fill 
+                            className="object-cover"
+                        />
+                    </div>
+                  )}
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -261,7 +339,7 @@ export default function CreateEventPage({
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                   />
                   <p className="text-xs text-gray-500 mt-2">
-                    Accepted formats: JPG, PNG, WEBP (max 5MB)
+                    Accepted formats: JPG, PNG, WEBP (max 5MB). Uploading a new file will replace the existing one.
                   </p>
                 </div>
               </div>
@@ -385,7 +463,7 @@ export default function CreateEventPage({
               disabled={submitting}
               className="px-8 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Creating...' : 'Create Event'}
+              {submitting ? 'Updating...' : 'Update Event'}
             </button>
             <button
               type="button"
