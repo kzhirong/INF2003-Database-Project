@@ -8,10 +8,6 @@ interface CCAData {
   _id: string;
   name: string;
   category: string;
-  stats?: {
-    currentMembers: number;
-    maxMembers: number;
-  };
 }
 
 export default function CCAAdminDashboard({ params }: { params: Promise<{ id: string }> }) {
@@ -21,6 +17,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [ccaData, setCcaData] = useState<CCAData | null>(null);
   const [userEmail, setUserEmail] = useState(""); // Store actual user email from Supabase
+  const [stats, setStats] = useState({ totalMembers: 0, activeMembers: 0 });
 
   // Placeholder data for upcoming events
   const upcomingEvents = [
@@ -33,6 +30,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
   useEffect(() => {
     fetchUserEmail();
     fetchCCAData();
+    fetchStats();
   }, [resolvedParams.id]);
 
   const fetchUserEmail = async () => {
@@ -40,12 +38,25 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user?.email) {
         setUserEmail(user.email);
       }
     } catch (error) {
       console.error("Error fetching user email:", error);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`/api/cca-admin/${resolvedParams.id}/members`);
+      const data = await response.json();
+
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -173,19 +184,19 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
 
             {/* Right Column - Stats */}
             <div className="space-y-6">
-              {/* Active Members Section */}
+              {/* Quick Stats Section */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl md:text-2xl font-bold text-black mb-6">
-                  Active Members
+                  Quick Stats
                 </h2>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#F5F5F5] p-4 rounded-lg">
                     <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                      -
+                      {stats.totalMembers}
                     </div>
                     <div className="text-sm text-gray-600">
-                      Active Members (Coming Soon)
+                      Active Members
                     </div>
                   </div>
 

@@ -1,38 +1,90 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import NavbarClient from "@/components/NavbarClient";
 import CCACard from "@/components/CCACard";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
-export default async function Dashboard() {
-  const supabase = await createClient();
+interface MyCCA {
+  id: string;
+  title: string;
+  category: string;
+  memberStatus: string;
+  upcomingEvent: string;
+}
 
-  // Get current user
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+export default function Dashboard() {
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [myCCAs, setMyCCAs] = useState<MyCCA[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (authError || !user) {
-    redirect("/");
-  }
+  useEffect(() => {
+    checkAuth();
+    fetchMyCCAs();
+  }, []);
 
-  // Fetch user details from public.users table
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const checkAuth = async () => {
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (userError || !userData) {
-    console.error("Error fetching user data:", userError);
-    redirect("/");
-  }
+    if (authError || !user) {
+      router.push("/");
+      return;
+    }
 
-  // Redirect non-students to their appropriate dashboard
-  if (userData.role === "system_admin") {
-    redirect("/admin");
-  } else if (userData.role === "cca_admin" && userData.cca_id) {
-    redirect(`/cca-admin/${userData.cca_id}`);
-  }
+    setUser(user);
 
-  // Get user initials for avatar
+    // Fetch user details
+    const { data, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (userError || !data) {
+      console.error("Error fetching user data:", userError);
+      router.push("/");
+      return;
+    }
+
+    setUserData(data);
+
+    // Redirect non-students
+    if (data.role === "system_admin") {
+      router.push("/admin");
+    } else if (data.role === "cca_admin") {
+      router.push(`/cca-admin/${data.cca_id}`);
+    }
+  };
+
+  const fetchMyCCAs = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/enrollments/my-ccas');
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const transformed = data.data.map((enrollment: any) => ({
+          id: enrollment.cca?._id || enrollment.cca_id,
+          title: enrollment.cca?.name || "Unknown CCA",
+          category: enrollment.cca?.category || "General",
+          memberStatus: "Member",
+          upcomingEvent: enrollment.cca?.schedule?.[0]
+            ? `${enrollment.cca.schedule[0].day}, ${enrollment.cca.schedule[0].startTime}, ${enrollment.cca.schedule[0].location}`
+            : "No scheduled sessions"
+        }));
+        setMyCCAs(transformed);
+      }
+    } catch (error) {
+      console.error('Error fetching CCAs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getInitials = (name: string | null) => {
     if (!name) return "??";
     const names = name.trim().split(" ");
@@ -42,31 +94,17 @@ export default async function Dashboard() {
     return name.substring(0, 2).toUpperCase();
   };
 
+  if (!user || !userData) {
+    return (
+      <div className="min-h-screen bg-[#FAFBFD] flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   const userFullName = userData?.name || "Student";
   const userEmail = user.email || "";
   const userInitials = getInitials(userData?.name);
-
-  // TODO: Fetch enrolled CCAs from database when enrollment is implemented
-  const myCCAs = [
-    {
-      title: "BASKETBALL",
-      category: "Sports",
-      memberStatus: "Member",
-      upcomingEvent: "Monday, 6PM, Sports Hall",
-    },
-    {
-      title: "HOCKEY",
-      category: "Sports",
-      memberStatus: "Member",
-      upcomingEvent: "Tuesday, 6PM, Sports Hall",
-    },
-    {
-      title: "FLOORBALL",
-      category: "Sports",
-      memberStatus: "Member",
-      upcomingEvent: "Tuesday, 4PM, Sports Hall",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-[#FAFBFD]">
@@ -111,7 +149,7 @@ export default async function Dashboard() {
                 Overview
               </button>
               <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
-                My CCA's
+                My CCA&apos;s
               </button>
               <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
                 My Events
@@ -142,24 +180,34 @@ export default async function Dashboard() {
                       My CCAs
                     </h2>
                     <a
-                      href="#"
+                      href="/ccas"
                       className="text-sm md:text-base text-blue-600 hover:text-blue-800 font-medium underline"
                     >
                       View All
                     </a>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {myCCAs.map((cca, index) => (
-                      <CCACard
-                        key={index}
-                        title={cca.title}
-                        category={cca.category}
-                        memberStatus={cca.memberStatus}
-                        upcomingEvent={cca.upcomingEvent}
-                      />
-                    ))}
-                  </div>
+                  {loading ? (
+                    <div className="text-center text-gray-600 py-8">
+                      Loading your CCAs...
+                    </div>
+                  ) : myCCAs.length === 0 ? (
+                    <div className="text-center text-gray-600 py-8">
+                      You haven&apos;t enrolled in any CCAs yet. Browse available CCAs to get started!
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {myCCAs.map((cca) => (
+                        <CCACard
+                          key={cca.id}
+                          title={cca.title}
+                          category={cca.category}
+                          memberStatus={cca.memberStatus}
+                          upcomingEvent={cca.upcomingEvent}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Upcoming Event Section */}
@@ -216,10 +264,10 @@ export default async function Dashboard() {
                   <div className="space-y-4">
                     <div className="bg-[#F5F5F5] p-4 rounded-lg">
                       <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                        3
+                        {myCCAs.length}
                       </div>
                       <div className="text-sm md:text-base text-gray-600">
-                        Active CCA's
+                        Active CCA&apos;s
                       </div>
                     </div>
 
@@ -241,17 +289,20 @@ export default async function Dashboard() {
                   </h2>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
+                    <button
+                      onClick={() => router.push('/ccas')}
+                      className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"
+                    >
                       Find new CCA
                     </button>
                     <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
                       Browse Events
                     </button>
                     <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
-                      View Registrations
+                      View Messages
                     </button>
                     <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
-                      Update Profile
+                      Settings
                     </button>
                   </div>
                 </div>
