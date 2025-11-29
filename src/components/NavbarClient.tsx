@@ -139,24 +139,24 @@ export default function NavbarClient() {
           {/* Navigation Links - Only show for students */}
           {userData?.role === "student" && (
             <div className="hidden md:flex items-center space-x-8 ">
-              <a
+              <Link
                 href="/landing"
                 className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
               >
                 HOME
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/events"
                 className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
               >
                 EVENTS
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/ccas"
                 className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
               >
                 CCAS
-              </a>
+              </Link>
             </div>
           )}
 

@@ -23,17 +23,36 @@ export interface UserData {
   phone_number?: string;
 }
 
+// Simple in-memory cache
+let userCache: {
+  userId: string;
+  data: UserData;
+  timestamp: number;
+} | null = null;
+
+const CACHE_TTL = 30000; // 30 seconds
+
 /**
  * Get user data including role from database (client-side)
  */
 export async function getUserData(): Promise<UserData | null> {
   try {
     const supabase = createClient();
-
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
+      userCache = null;
       return null;
+    }
+
+    // Check cache
+    const now = Date.now();
+    if (
+      userCache &&
+      userCache.userId === user.id &&
+      now - userCache.timestamp < CACHE_TTL
+    ) {
+      return userCache.data;
     }
 
     // Get base user data
@@ -48,8 +67,11 @@ export async function getUserData(): Promise<UserData | null> {
       return null;
     }
 
+    let finalUserData: UserData = { ...userData } as UserData;
+
     // If CCA admin, get their CCA ID and fetch CCA name from MongoDB
     if (userData.role === 'cca_admin') {
+      // Parallelize fetching admin details and CCA name (if we had the ID, but we need admin details first)
       const { data: adminData } = await supabase
         .from("cca_admin_details")
         .select("cca_id")
@@ -71,7 +93,7 @@ export async function getUserData(): Promise<UserData | null> {
         }
       }
 
-      return {
+      finalUserData = {
         ...userData,
         cca_id: adminData?.cca_id,
         name: ccaName
@@ -79,24 +101,35 @@ export async function getUserData(): Promise<UserData | null> {
     }
 
     // If student, get their student details (including name)
-    if (userData.role === 'student') {
+    else if (userData.role === 'student') {
       const { data: studentData } = await supabase
         .from("student_details")
         .select("name, student_id, course, year_of_study, phone_number")
         .eq("user_id", user.id)
         .single();
 
-      return {
+      finalUserData = {
         ...userData,
         ...studentData
       } as UserData;
     }
 
     // System admin - just return base user data with admin name
-    return {
-      ...userData,
-      name: "System Administrator"
-    } as UserData;
+    else {
+      finalUserData = {
+        ...userData,
+        name: "System Administrator"
+      } as UserData;
+    }
+
+    // Update cache
+    userCache = {
+      userId: user.id,
+      data: finalUserData,
+      timestamp: now,
+    };
+
+    return finalUserData;
   } catch (err) {
     console.error('Error in getUserData:', err);
     return null;

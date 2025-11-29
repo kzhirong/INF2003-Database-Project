@@ -14,9 +14,21 @@ export async function GET(request: NextRequest) {
     const commitment = searchParams.get('commitment');
     const sportType = searchParams.get('sportType');
     const search = searchParams.get('search');
+    const ids = searchParams.get('ids'); // Comma-separated list of IDs
+
+    // OPTIMIZATION: Add pagination parameters
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
     // Build filter query
     const filter: any = {};
+
+    if (ids) {
+      const idList = ids.split(',').filter(id => id.trim() !== '');
+      if (idList.length > 0) {
+        filter._id = { $in: idList };
+      }
+    }
 
     if (category) filter.category = category;
     if (schedule) filter.schedule = { $in: [schedule] };
@@ -24,9 +36,26 @@ export async function GET(request: NextRequest) {
     if (sportType) filter.sportType = sportType;
     if (search) filter.name = { $regex: search, $options: 'i' };
 
-    const ccas = await CCA.find(filter).select('-blocks').lean();
+    // OPTIMIZATION: Add pagination and get total count
+    const [ccas, totalCount] = await Promise.all([
+      CCA.find(filter)
+        .select('-blocks')
+        .skip(offset)
+        .limit(limit)
+        .lean(),
+      CCA.countDocuments(filter)
+    ]);
 
-    return NextResponse.json({ success: true, data: ccas }, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      data: ccas,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: (offset + limit) < totalCount
+      }
+    }, { status: 200 });
   } catch (error: any) {
     console.error('Error fetching CCAs:', error);
     return NextResponse.json(

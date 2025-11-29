@@ -30,51 +30,42 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      fetchMyCCAs();
-      fetchUpcomingEvents();
+      // OPTIMIZATION: Run fetches in parallel for faster page load
+      Promise.all([
+        fetchMyCCAs(),
+        fetchUpcomingEvents()
+      ]).catch(error => {
+        console.error('Error loading dashboard:', error);
+      });
     }
   }, [user]);
 
   const checkAuth = async () => {
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    try {
+      const { getUserData } = await import("@/lib/auth");
+      const data = await getUserData();
 
-    if (authError || !user) {
-      router.push("/");
-      return;
-    }
-
-    setUser(user);
-
-    // Fetch user details
-    const { data, error: userError } = await supabase
-      .from("users")
-      .select("*, student_details(*)")
-      .eq("id", user.id)
-      .single();
-
-    if (userError || !data) {
-      console.error("Error fetching user data:", userError);
-      router.push("/");
-      return;
-    }
-
-    setUserData(data);
-
-    // Redirect non-students
-    if (data.role === "system_admin") {
-      router.push("/admin");
-    } else if (data.role === "cca_admin") {
-      // Get CCA ID from cca_admin_details
-      const { data: adminData } = await supabase
-        .from("cca_admin_details")
-        .select("cca_id")
-        .eq("user_id", user.id)
-        .single();
-      
-      if (adminData?.cca_id) {
-        router.push(`/cca-admin/${adminData.cca_id}`);
+      if (!data) {
+        router.push("/");
+        return;
       }
+
+      // Set user object for other functions that need it (like fetchMyCCAs)
+      // We reconstruct a minimal user object since getUserData returns the full profile
+      setUser({ id: data.id, email: data.email });
+      setUserData(data);
+
+      // Redirect non-students
+      if (data.role === "system_admin") {
+        router.push("/admin");
+      } else if (data.role === "cca_admin") {
+        if (data.cca_id) {
+          router.push(`/cca-admin/${data.cca_id}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking auth:", error);
+      router.push("/");
     }
   };
 
@@ -92,18 +83,16 @@ export default function Dashboard() {
       if (error) throw error;
 
       if (memberships && memberships.length > 0) {
-        // Fetch CCA details from MongoDB
-        const ccaPromises = memberships.map(async (membership) => {
-          const response = await fetch(`/api/ccas/${membership.cca_id}`);
-          const data = await response.json();
-          return data.success ? data.data : null;
-        });
+        // Collect all CCA IDs
+        const ccaIds = memberships.map(m => m.cca_id).join(',');
 
-        const ccasData = await Promise.all(ccaPromises);
+        // Fetch all CCA details from MongoDB in one batch request
+        const response = await fetch(`/api/ccas?ids=${ccaIds}`);
+        const data = await response.json();
         
-        const transformed = ccasData
-          .filter(cca => cca !== null)
-          .map((cca: any) => ({
+        const ccasData = data.success ? data.data : [];
+        
+        const transformed = ccasData.map((cca: any) => ({
             id: cca._id,
             title: cca.name || "Unknown CCA",
             category: cca.category || "General",

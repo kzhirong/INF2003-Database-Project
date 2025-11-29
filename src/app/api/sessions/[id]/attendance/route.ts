@@ -8,6 +8,12 @@ export async function GET(
 ) {
   try {
     const { id: sessionId } = await params;
+    const { searchParams } = new URL(request.url);
+
+    // Pagination parameters
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
     const supabase = await createClient();
 
     // Check authentication
@@ -52,39 +58,33 @@ export async function GET(
       );
     }
 
-    // Get ALL attendance records (both attended and not attended)
-    const { data: attendanceRecords, error } = await supabase
+    // Get attendance records with pagination
+    const { data: attendanceRecords, error, count } = await supabase
       .from("attendance")
-      .select("id, user_id, attended, marked_by, marked_at")
+      .select("id, user_id, attended, marked_by, marked_at", { count: 'exact' })
       .eq("session_id", sessionId)
-      .order("marked_at", { ascending: true });
+      .order("marked_at", { ascending: true })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
     // Get all user IDs
     const userIds = (attendanceRecords || []).map((r: any) => r.user_id);
 
-    // Fetch student details directly
+    // OPTIMIZATION: Fetch student details with user emails in a single join query
     const { data: students } = await supabase
       .from('student_details')
-      .select('user_id, name, student_id, phone_number')
+      .select('user_id, name, student_id, phone_number, users!inner(id, email)')
       .in('user_id', userIds);
 
-    // Fetch user emails
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, email')
-      .in('id', userIds);
-
-    // Create maps for easy lookup
+    // Create map for easy lookup
     const studentMap = new Map(students?.map((s: any) => [s.user_id, s]));
-    const userMap = new Map(users?.map((u: any) => [u.id, u]));
 
-    // Enrich with student details
+    // Enrich with student details (now includes user data from join)
     const enrichedAttendance = (attendanceRecords || []).map((record: any) => {
       const student = studentMap.get(record.user_id);
-      const user = userMap.get(record.user_id);
-      
+      const user = (student?.users as any)?.[0];
+
       return {
         id: record.id,
         user_id: record.user_id,
@@ -100,13 +100,6 @@ export async function GET(
         },
       };
     });
-
-    // Get total from attendance records
-    const totalMarked = enrichedAttendance.filter(rec => rec.attended).length;
-    const { count: totalCCAMembers } = await supabase
-      .from("cca_membership")
-      .select("*", { count: "exact", head: true })
-      .eq("cca_id", session.cca_id);
 
     // Calculate summary
     const totalMembers = enrichedAttendance.length;
@@ -124,6 +117,12 @@ export async function GET(
         attended,
         absent,
         attendance_rate: parseFloat(attendance_rate.toFixed(2)),
+      },
+      pagination: {
+        total: count || 0,
+        limit,
+        offset,
+        hasMore: (offset + limit) < (count || 0),
       },
     });
   } catch (error: any) {
@@ -199,34 +198,52 @@ export async function POST(
       );
     }
 
-    // Since records are pre-created, we UPDATE them instead of INSERT
-    // Step 1: Mark selected users as attended = true
-    if (user_ids.length > 0) {
-      const { error: updateError } = await supabase
-        .from("attendance")
-        .update({
-          attended: true,
-          marked_by: user.id,
-          marked_at: new Date().toISOString(),
-        })
-        .eq("session_id", sessionId)
-        .in("user_id", user_ids);
+    // OPTIMIZATION: Use batch updates instead of dangerous string concatenation
+    // Step 1: Get all attendance records for this session
+    const { data: allRecords } = await supabase
+      .from("attendance")
+      .select("user_id")
+      .eq("session_id", sessionId);
 
-      if (updateError) throw updateError;
+    const allUserIds = (allRecords || []).map((r: any) => r.user_id);
+    const absentUserIds = allUserIds.filter((id: string) => !user_ids.includes(id));
+
+    // Step 2: Update attended users and absent users in parallel
+    const updates = [];
+
+    if (user_ids.length > 0) {
+      updates.push(
+        supabase
+          .from("attendance")
+          .update({
+            attended: true,
+            marked_by: user.id,
+            marked_at: new Date().toISOString(),
+          })
+          .eq("session_id", sessionId)
+          .in("user_id", user_ids)
+      );
     }
 
-    // Step 2: Mark unselected users as attended = false
-    const { error: resetError } = await supabase
-      .from("attendance")
-      .update({
-        attended: false,
-        marked_by: null,
-        marked_at: null,
-      })
-      .eq("session_id", sessionId)
-      .not("user_id", "in", `(${user_ids.length > 0 ? user_ids.map(id => `"${id}"`).join(",") : '""'})`);
+    if (absentUserIds.length > 0) {
+      updates.push(
+        supabase
+          .from("attendance")
+          .update({
+            attended: false,
+            marked_by: null,
+            marked_at: null,
+          })
+          .eq("session_id", sessionId)
+          .in("user_id", absentUserIds)
+      );
+    }
 
-    if (resetError) throw resetError;
+    const results = await Promise.all(updates);
+    const errors = results.filter(r => r.error);
+    if (errors.length > 0) {
+      throw new Error(`Failed to update ${errors.length} attendance records`);
+    }
 
     return NextResponse.json({
       success: true,

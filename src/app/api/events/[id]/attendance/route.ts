@@ -8,6 +8,12 @@ export async function GET(
 ) {
   try {
     const { id: eventId } = await params;
+    const { searchParams } = new URL(request.url);
+
+    // Pagination parameters
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
     const supabase = await createClient();
 
     // Check authentication
@@ -49,12 +55,13 @@ export async function GET(
       );
     }
 
-    // Get all attendance records (no join - we'll enrich separately)
-    const { data: attendanceRecords, error } = await supabase
+    // Get attendance records with pagination
+    const { data: attendanceRecords, error, count } = await supabase
       .from('attendance')
-      .select('id, user_id, attended, marked_by, marked_at')
+      .select('id, user_id, attended, marked_by, marked_at', { count: 'exact' })
       .eq('event_id', eventId)
-      .order('marked_at', { ascending: true });
+      .order('marked_at', { ascending: true })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -75,27 +82,20 @@ export async function GET(
     // Get all user IDs
     const userIds = attendanceRecords.map((r: any) => r.user_id);
 
-    // Fetch student details directly
+    // OPTIMIZATION: Fetch student details with user emails in a single join query
     const { data: students } = await supabase
       .from('student_details')
-      .select('user_id, name, student_id, phone_number')
+      .select('user_id, name, student_id, phone_number, users!inner(id, email)')
       .in('user_id', userIds);
 
-    // Fetch user emails
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, email')
-      .in('id', userIds);
-
-    // Create maps for easy lookup
+    // Create map for easy lookup
     const studentMap = new Map(students?.map((s: any) => [s.user_id, s]));
-    const userMap = new Map(users?.map((u: any) => [u.id, u]));
 
-    // Enrich with student details
+    // Enrich with student details (now includes user data from join)
     const enrichedAttendance = attendanceRecords.map((record: any) => {
       const student = studentMap.get(record.user_id);
-      const user = userMap.get(record.user_id);
-      
+      const user = (student?.users as any)?.[0];
+
       return {
         id: record.id,
         user_id: record.user_id,
@@ -128,6 +128,12 @@ export async function GET(
         attended,
         absent,
         attendance_rate: parseFloat(attendance_rate.toFixed(2)),
+      },
+      pagination: {
+        total: count || 0,
+        limit,
+        offset,
+        hasMore: (offset + limit) < (count || 0),
       },
     });
   } catch (error: any) {

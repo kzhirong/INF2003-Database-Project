@@ -52,26 +52,18 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
 
   const fetchUserEmail = async () => {
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { getUserData } = await import("@/lib/auth");
+      const userData = await getUserData();
       
-      if (user?.email) {
-        setUserEmail(user.email);
+      if (userData?.email) {
+        setUserEmail(userData.email);
         
-        // Get user role for permission checking
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        
-        if (userData?.role) {
+        if (userData.role) {
           setUserRole(userData.role);
         }
       }
     } catch (error) {
-      console.error("Error fetching user email:", error);
+      console.error("Error fetching user data:", error);
     }
   };
 

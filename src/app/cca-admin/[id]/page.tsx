@@ -21,29 +21,31 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
   const [userEmail, setUserEmail] = useState(""); // Store actual user email from Supabase
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
-  const [memberCount, setMemberCount] = useState(0);
   const [stats, setStats] = useState({ totalMembers: 0, activeMembers: 0 });
 
   useEffect(() => {
-    fetchUserEmail();
-    fetchCCAData();
-    fetchEvents();
-    fetchSessions();
-    fetchMembers();
-    fetchStats();
+    // OPTIMIZATION: Run all fetches in parallel for faster page load
+    Promise.all([
+      fetchUserData(),
+      fetchCCAData(),
+      fetchEvents(),
+      fetchSessions(),
+      fetchStats()
+    ]).catch(error => {
+      console.error('Error loading dashboard data:', error);
+    });
   }, [resolvedParams.id]);
 
-  const fetchUserEmail = async () => {
+  const fetchUserData = async () => {
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user?.email) {
-        setUserEmail(user.email);
+      const { getUserData } = await import("@/lib/auth");
+      const userData = await getUserData();
+      
+      if (userData?.email) {
+        setUserEmail(userData.email);
       }
     } catch (error) {
-      console.error("Error fetching user email:", error);
+      console.error("Error fetching user data:", error);
     }
   };
 
@@ -82,14 +84,12 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch(`/api/events?cca_id=${resolvedParams.id}&limit=4`);
+      // Use upcoming=true to let the server filter for us
+      const response = await fetch(`/api/events?cca_id=${resolvedParams.id}&limit=4&upcoming=true`);
       const data = await response.json();
 
       if (data.success) {
-        const upcoming = data.data.filter((event: any) =>
-          new Date(event.date) >= new Date() && event.status === 'published'
-        );
-        setUpcomingEvents(upcoming.slice(0, 4));
+        setUpcomingEvents(data.data);
       }
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -98,32 +98,18 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
 
   const fetchSessions = async () => {
     try {
-      const response = await fetch(`/api/sessions?cca_id=${resolvedParams.id}&limit=4`);
+      // Use upcoming=true to let the server filter for us
+      const response = await fetch(`/api/sessions?cca_id=${resolvedParams.id}&limit=4&upcoming=true`);
       const data = await response.json();
 
       if (data.success) {
-        const upcoming = data.data.filter((session: any) =>
-          new Date(session.date) >= new Date()
-        );
-        setUpcomingSessions(upcoming.slice(0, 4));
+        setUpcomingSessions(data.data);
       }
     } catch (error) {
       console.error("Error fetching sessions:", error);
     }
   };
 
-  const fetchMembers = async () => {
-    try {
-      const response = await fetch(`/api/memberships?cca_id=${resolvedParams.id}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setMemberCount(data.data.length);
-      }
-    } catch (error) {
-      console.error("Error fetching members:", error);
-    }
-  };
 
   if (loading) {
     return (

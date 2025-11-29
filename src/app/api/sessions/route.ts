@@ -13,12 +13,25 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Build query
+    const upcoming = searchParams.get("upcoming") === "true";
+
+    // Optimization: Parallel Execution
+    
+    // 1. Start MongoDB connection early (non-blocking)
+    const dbPromise = connectDB();
+
+    // 2. Start Supabase query
     let query = supabase
       .from("sessions")
-      .select("*", { count: "exact" })
-      .order("date", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .select("*", { count: "exact" });
+
+    if (upcoming) {
+      query = query.gte("date", new Date().toISOString()).order("date", { ascending: true });
+    } else {
+      query = query.order("date", { ascending: false });
+    }
+
+    query = query.range(offset, offset + limit - 1);
 
     if (cca_id) {
       query = query.eq("cca_id", cca_id);
@@ -28,34 +41,71 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // Enrich with CCA names and attendance counts
-    await connectDB();
-    const enrichedSessions = await Promise.all(
-      (sessions || []).map(async (session) => {
-        // Get CCA name from MongoDB
-        const cca = await CCA.findById(session.cca_id).lean();
+    // Optimization: Batch fetch CCA names and counts in parallel
+    // Ensure DB is connected before using models
+    await dbPromise;
+    
+    const sessionIds = (sessions || []).map(s => s.id);
+    const ccaIds = [...new Set((sessions || []).map(s => s.cca_id))];
 
-        // Get attendance count (only attended = true)
-        const { count: attendanceCount } = await supabase
-          .from("attendance")
-          .select("*", { count: "exact", head: true })
-          .eq("session_id", session.id)
-          .eq("attended", true);
+    const [ccaMap, attendanceCounts, memberCounts] = await Promise.all([
+      // 1. Batch fetch CCAs from MongoDB
+      (async () => {
+        const map = new Map();
+        if (ccaIds.length > 0) {
+          const ccas = await CCA.find({ _id: { $in: ccaIds } }).lean();
+          ccas.forEach((c: any) => {
+            map.set(c._id.toString(), c.name);
+          });
+        }
+        return map;
+      })(),
 
-        // Get total CCA members
-        const { count: totalMembers } = await supabase
-          .from("cca_membership")
-          .select("*", { count: "exact", head: true })
-          .eq("cca_id", session.cca_id);
+      // 2. Batch fetch attendance counts (attended = true)
+      (async () => {
+        const map = new Map();
+        if (sessionIds.length > 0) {
+          const { data: allAttendance } = await supabase
+            .from("attendance")
+            .select("session_id")
+            .eq("attended", true)
+            .in("session_id", sessionIds);
+            
+          (allAttendance || []).forEach((a: any) => {
+            const current = map.get(a.session_id) || 0;
+            map.set(a.session_id, current + 1);
+          });
+        }
+        return map;
+      })(),
 
-        return {
-          ...session,
-          cca_name: cca?.name || "Unknown CCA",
-          attendance_count: attendanceCount || 0,
-          total_members: totalMembers || 0,
-        };
-      })
-    );
+      // 3. Batch fetch total members per CCA
+      (async () => {
+        const map = new Map();
+        if (ccaIds.length > 0) {
+          const { data: allMembers } = await supabase
+            .from("cca_membership")
+            .select("cca_id")
+            .in("cca_id", ccaIds);
+            
+          (allMembers || []).forEach((m: any) => {
+            const current = map.get(m.cca_id) || 0;
+            map.set(m.cca_id, current + 1);
+          });
+        }
+        return map;
+      })()
+    ]);
+
+    // 4. Map data back
+    const enrichedSessions = (sessions || []).map((session) => {
+      return {
+        ...session,
+        cca_name: ccaMap.get(session.cca_id) || "Unknown CCA",
+        attendance_count: attendanceCounts.get(session.id) || 0,
+        total_members: memberCounts.get(session.cca_id) || 0,
+      };
+    });
 
     return NextResponse.json({
       success: true,

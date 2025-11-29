@@ -35,9 +35,14 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    fetchUserEmail();
-    fetchCCAData();
-    fetchMembers();
+    // OPTIMIZATION: Run all fetches in parallel for faster page load
+    Promise.all([
+      fetchUserData(),
+      fetchCCAData(),
+      fetchMembers()
+    ]).catch(error => {
+      console.error('Error loading members page:', error);
+    });
   }, [resolvedParams.id]);
 
   // Auto-dismiss error after 5 seconds
@@ -56,17 +61,16 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
     }
   }, [success]);
 
-  const fetchUserEmail = async () => {
+  const fetchUserData = async () => {
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { getUserData } = await import("@/lib/auth");
+      const userData = await getUserData();
       
-      if (user?.email) {
-        setUserEmail(user.email);
+      if (userData?.email) {
+        setUserEmail(userData.email);
       }
     } catch (error) {
-      console.error("Error fetching user email:", error);
+      console.error("Error fetching user data:", error);
     }
   };
 

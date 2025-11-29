@@ -31,42 +31,60 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     // Enrich with CCA names from MongoDB and student data
+    // OPTIMIZATION: Batch fetch instead of N+1 queries
     await connectDB();
-    const enrichedMemberships = await Promise.all(
-      (memberships || []).map(async (membership: any) => {
-        const cca = await CCA.findById(membership.cca_id).lean();
 
-        // Fetch user and student details from public tables
-        const { data: userData } = await supabase
-          .from('users')
-          .select(`
-            id,
-            email,
-            student_details:student_details(name, student_id, phone_number)
-          `)
-          .eq('id', membership.user_id)
-          .single();
+    if (!memberships || memberships.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+      });
+    }
 
-        const studentDetails = (userData?.student_details as any)?.[0];
+    // Extract unique IDs for batch fetching
+    const ccaIds = [...new Set(memberships.map((m: any) => m.cca_id))];
+    const userIds = [...new Set(memberships.map((m: any) => m.user_id))];
 
-        return {
-          id: membership.id,
-          cca_id: membership.cca_id,
-          cca_name: cca?.name || "Unknown CCA",
-          user_id: membership.user_id,
-          created_at: membership.created_at,
-          student: studentDetails
-            ? {
-                id: membership.user_id,
-                name: studentDetails.name || "Unknown",
-                student_id: studentDetails.student_id || "N/A",
-                email: userData?.email || "",
-                phone_number: studentDetails.phone_number || null,
-              }
-            : null,
-        };
-      })
-    );
+    // Batch fetch CCAs and users in parallel
+    const [ccas, { data: usersData }] = await Promise.all([
+      CCA.find({ _id: { $in: ccaIds } }).lean(),
+      supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          student_details:student_details(name, student_id, phone_number)
+        `)
+        .in('id', userIds)
+    ]);
+
+    // Create maps for O(1) lookup
+    const ccaMap = new Map(ccas.map((c: any) => [c._id.toString(), c]));
+    const userMap = new Map((usersData || []).map((u: any) => [u.id, u]));
+
+    // Enrich memberships with batched data
+    const enrichedMemberships = memberships.map((membership: any) => {
+      const cca = ccaMap.get(membership.cca_id);
+      const userData = userMap.get(membership.user_id);
+      const studentDetails = (userData?.student_details as any)?.[0];
+
+      return {
+        id: membership.id,
+        cca_id: membership.cca_id,
+        cca_name: cca?.name || "Unknown CCA",
+        user_id: membership.user_id,
+        created_at: membership.created_at,
+        student: studentDetails
+          ? {
+              id: membership.user_id,
+              name: studentDetails.name || "Unknown",
+              student_id: studentDetails.student_id || "N/A",
+              email: userData?.email || "",
+              phone_number: studentDetails.phone_number || null,
+            }
+          : null,
+      };
+    });
 
     return NextResponse.json({
       success: true,

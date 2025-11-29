@@ -14,68 +14,115 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Build query
+    const upcoming = searchParams.get('upcoming') === 'true';
+
+    // Optimization: Optimistic Fetching
+    // Start fetching events immediately
     let query = supabase
       .from('events')
       .select('*', { count: 'exact' })
-      .eq('status', status)
-      .order('date', { ascending: true })
-      .range(offset, offset + limit - 1);
+      .eq('status', status);
+
+    if (upcoming) {
+      query = query.gte('date', new Date().toISOString()).order('date', { ascending: true });
+    } else {
+      query = query.order('date', { ascending: true });
+    }
+      
+    query = query.range(offset, offset + limit - 1);
 
     if (cca_id) {
       query = query.eq('cca_id', cca_id);
     }
 
-    const { data: events, error, count } = await query;
+    // Start the query promise but don't await yet
+    const eventsPromise = query;
+
+    // Start auth check in parallel (if needed for user-specific data later)
+    const authPromise = supabase.auth.getUser();
+
+    // Await events first as that's the main data
+    const { data: events, error, count } = await eventsPromise;
 
     if (error) throw error;
 
-    // Enrich with CCA names and registration counts
+    // Optimization: Batch fetch CCA names and attendance data in parallel
     await connectDB();
-    const enrichedEvents = await Promise.all(
-      (events || []).map(async (event) => {
-        // Get CCA name from MongoDB
-        const cca = await CCA.findById(event.cca_id).lean();
-
-        // Get registration count directly from attendance table
-        const { count: currentRegistrations } = await supabase
-          .from('attendance')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', event.id);
-
-        // Calculate spots remaining and is_full
-        const spotsRemaining = event.max_attendees 
-          ? event.max_attendees - (currentRegistrations || 0)
-          : null;
-        const isFull = event.max_attendees 
-          ? (currentRegistrations || 0) >= event.max_attendees
-          : false;
-
-        // Check if current user is registered
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        let isRegistered = false;
-        if (user) {
-          const { data: reg } = await supabase
-            .from('attendance')
-            .select('id')
-            .eq('event_id', event.id)
-            .eq('user_id', user.id)
-            .single();
-          isRegistered = !!reg;
+    
+    const eventIds = (events || []).map(e => e.id);
+    const ccaIds = [...new Set((events || []).map(e => e.cca_id))];
+    
+    const [ccaMap, registrationCounts, userRegistrations] = await Promise.all([
+      // 1. Batch fetch CCAs from MongoDB
+      (async () => {
+        const map = new Map();
+        if (ccaIds.length > 0) {
+          const ccas = await CCA.find({ _id: { $in: ccaIds } }).lean();
+          ccas.forEach((c: any) => {
+            map.set(c._id.toString(), c.name);
+          });
         }
+        return map;
+      })(),
 
-        return {
-          ...event,
-          cca_name: cca?.name || 'Unknown CCA',
-          current_registrations: currentRegistrations || 0,
-          spots_remaining: spotsRemaining,
-          is_full: isFull,
-          is_registered: isRegistered,
-        };
-      })
-    );
+      // 2. Batch fetch attendance counts
+      (async () => {
+        const map = new Map();
+        if (eventIds.length > 0) {
+          const { data: allAttendance } = await supabase
+            .from('attendance')
+            .select('event_id')
+            .in('event_id', eventIds);
+            
+          (allAttendance || []).forEach((a: any) => {
+            const current = map.get(a.event_id) || 0;
+            map.set(a.event_id, current + 1);
+          });
+        }
+        return map;
+      })(),
+
+      // 3. Batch fetch user registration status
+      (async () => {
+        const set = new Set();
+        const { data: { user } } = await authPromise;
+        
+        if (user && eventIds.length > 0) {
+          const { data: myAttendance } = await supabase
+            .from('attendance')
+            .select('event_id')
+            .eq('user_id', user.id)
+            .in('event_id', eventIds);
+            
+          (myAttendance || []).forEach((a: any) => {
+            set.add(a.event_id);
+          });
+        }
+        return set;
+      })()
+    ]);
+
+    // 4. Map data back
+    const enrichedEvents = (events || []).map((event) => {
+      const currentRegistrations = registrationCounts.get(event.id) || 0;
+      
+      const spotsRemaining = event.max_attendees 
+        ? event.max_attendees - currentRegistrations
+        : null;
+        
+      const isFull = event.max_attendees 
+        ? currentRegistrations >= event.max_attendees
+        : false;
+
+      return {
+        ...event,
+        cca_name: ccaMap.get(event.cca_id) || 'Unknown CCA',
+        current_registrations: currentRegistrations,
+        spots_remaining: spotsRemaining,
+        is_full: isFull,
+        is_registered: userRegistrations.has(event.id),
+      };
+    });
 
     return NextResponse.json({
       success: true,

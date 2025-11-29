@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
 import NavbarClient from '@/components/NavbarClient';
 import EventCard from '@/components/EventCard';
@@ -15,21 +15,22 @@ export default function EventsPage() {
   const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    // Check authentication
-    const checkAuth = async () => {
-      const data = await getUserData();
-      if (!data) {
-        redirect('/');
-      }
-      setUserData(data);
-    };
-    checkAuth();
+    // OPTIMIZATION: Run auth check and events fetch in parallel
+    Promise.all([
+      checkAuth(),
+      fetchEvents()
+    ]).catch(error => {
+      console.error('Error loading page:', error);
+    });
   }, []);
 
-  useEffect(() => {
-    if (!userData) return;
-    fetchEvents();
-  }, [userData]);
+  const checkAuth = async () => {
+    const data = await getUserData();
+    if (!data) {
+      redirect('/');
+    }
+    setUserData(data);
+  };
 
   const fetchEvents = async () => {
     try {

@@ -11,6 +11,15 @@ export async function GET(
 
     // Get authenticated user
     const supabase = await createClient();
+    
+    // Optimization: Optimistic Fetching
+    // Start fetching members immediately, in parallel with Auth/Role checks
+    // We don't await this yet.
+    const membersPromise = supabase
+      .from('cca_membership')
+      .select('id, user_id, created_at')
+      .eq('cca_id', ccaId);
+
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -34,11 +43,8 @@ export async function GET(
       );
     }
 
-    // Fetch members directly from cca_membership table
-    const { data: members, error: membersError } = await supabase
-      .from('cca_membership')
-      .select('id, user_id, created_at')
-      .eq('cca_id', ccaId);
+    // Now await the members fetch
+    const { data: members, error: membersError } = await membersPromise;
 
     if (membersError) {
       console.error('Error fetching members:', membersError);
@@ -48,39 +54,54 @@ export async function GET(
       );
     }
 
-    // Fetch student details for each member
-    const transformedMembers = await Promise.all(
-      (members || []).map(async (m: any) => {
-        const { data: studentData } = await supabase
-          .from('student_details')
-          .select('student_id, name, phone_number, course_id')
-          .eq('user_id', m.user_id)
-          .single();
+    // Optimization: Batch fetch student details WITH courses using JOIN
+    const memberUserIds = (members || []).map((m: any) => m.user_id);
 
-        const { data: courseData } = studentData?.course_id
-          ? await supabase
-              .from('courses')
-              .select('course_name')
-              .eq('id', studentData.course_id)
-              .single()
-          : { data: null };
+    // Fetch student details AND their related course in ONE query
+    const { data: allStudentData, error: studentError } = await supabase
+      .from('student_details')
+      .select('user_id, student_id, name, phone_number, courses(id, course_name)')
+      .in('user_id', memberUserIds);
 
-        return {
-          enrollment_id: m.id,
-          user_id: m.user_id,
-          student_id: studentData?.student_id || 'Unknown',
-          name: studentData?.name || 'Unknown',
-          phone_number: studentData?.phone_number || '',
-          course_name: courseData?.course_name || 'Unknown',
-          created_at: m.created_at
-        };
-      })
-    );
+    if (studentError) {
+      console.error('Error fetching student details:', studentError);
+    }
+
+    // Create a map for easy lookup
+    const studentMap = new Map();
+    
+    (allStudentData || []).forEach((s: any) => {
+      // Flatten the structure: s.courses is an object or array depending on relationship
+      // Assuming One-to-Many or Many-to-One, but here likely Many-to-One (Student belongs to Course)
+      // Supabase returns single object if FK is detected and singular, or array if not.
+      // We'll handle both just in case.
+      const courseData = Array.isArray(s.courses) ? s.courses[0] : s.courses;
+      
+      studentMap.set(s.user_id, {
+        ...s,
+        course_name: courseData?.course_name || 'Unknown'
+      });
+    });
+
+    // 3. Map the data back
+    const transformedMembers = (members || []).map((m: any) => {
+      const student = studentMap.get(m.user_id);
+
+      return {
+        enrollment_id: m.id,
+        user_id: m.user_id,
+        student_id: student?.student_id || 'Unknown',
+        name: student?.name || 'Unknown',
+        phone_number: student?.phone_number || '',
+        course_name: student?.course_name || 'Unknown',
+        created_at: m.created_at
+      };
+    });
 
     const totalMembers = transformedMembers.length;
     return NextResponse.json({
       success: true,
-      data: transformedMembers.sort((a, b) => a.name.localeCompare(b.name)),
+      data: transformedMembers.sort((a: any, b: any) => a.name.localeCompare(b.name)),
       stats: {
         totalMembers,
         activeMembers: totalMembers
