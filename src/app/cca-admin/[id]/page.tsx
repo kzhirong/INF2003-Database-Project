@@ -3,6 +3,8 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import NavbarClient from "@/components/NavbarClient";
+import EventCard from "@/components/EventCard";
+import SessionCard from "@/components/SessionCard";
 
 interface CCAData {
   _id: string;
@@ -21,18 +23,16 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [ccaData, setCcaData] = useState<CCAData | null>(null);
   const [userEmail, setUserEmail] = useState(""); // Store actual user email from Supabase
-
-  // Placeholder data for upcoming events
-  const upcomingEvents = [
-    { id: 1, title: "Hip Hop for You", time: "6PM", location: "Sports Hall" },
-    { id: 2, title: "Hip Hop for James", time: "6PM", location: "Sports Hall" },
-    { id: 3, title: "Hip Hop for Mochi", time: "6PM", location: "Sports Hall" },
-    { id: 4, title: "Hip Hop for Luke", time: "6PM", location: "Sports Hall" },
-  ];
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
+  const [memberCount, setMemberCount] = useState(0);
 
   useEffect(() => {
     fetchUserEmail();
     fetchCCAData();
+    fetchEvents();
+    fetchSessions();
+    fetchMembers();
   }, [resolvedParams.id]);
 
   const fetchUserEmail = async () => {
@@ -66,6 +66,51 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
       router.push("/");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch(`/api/events?cca_id=${resolvedParams.id}&limit=4`);
+      const data = await response.json();
+
+      if (data.success) {
+        const upcoming = data.data.filter((event: any) =>
+          new Date(event.date) >= new Date() && event.status === 'published'
+        );
+        setUpcomingEvents(upcoming.slice(0, 4));
+      }
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  };
+
+  const fetchSessions = async () => {
+    try {
+      const response = await fetch(`/api/sessions?cca_id=${resolvedParams.id}&limit=4`);
+      const data = await response.json();
+
+      if (data.success) {
+        const upcoming = data.data.filter((session: any) =>
+          new Date(session.date) >= new Date()
+        );
+        setUpcomingSessions(upcoming.slice(0, 4));
+      }
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const response = await fetch(`/api/memberships?cca_id=${resolvedParams.id}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setMemberCount(data.data.length);
+      }
+    } catch (error) {
+      console.error("Error fetching members:", error);
     }
   };
 
@@ -127,10 +172,16 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                 My Members
               </button>
               <button
-                onClick={() => router.push(`/ccas/${resolvedParams.id}/edit`)}
+                onClick={() => router.push(`/cca-admin/${resolvedParams.id}/events`)}
                 className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                Manage
+                Events
+              </button>
+              <button
+                onClick={() => router.push(`/cca-admin/${resolvedParams.id}/sessions`)}
+                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Sessions
               </button>
             </div>
           </div>
@@ -140,63 +191,154 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
         <div className="px-4 sm:px-8 md:px-16 lg:px-24">
           {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Upcoming Events */}
-            <div className="lg:col-span-2">
+            {/* Left Column - Upcoming Events & Sessions */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Events */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl md:text-2xl font-bold text-black">
                     Upcoming Events
                   </h2>
                   <button
+                    onClick={() => router.push(`/cca-admin/${resolvedParams.id}/events`)}
                     className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     Manage Events
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {upcomingEvents.map((event) => (
-                    <div key={event.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                      {/* Placeholder Image */}
-                      <div className="w-full h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                        <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <h3 className="font-bold text-black mb-1">{event.title}</h3>
-                      <p className="text-sm text-gray-600">{event.time}, {event.location}</p>
-                    </div>
-                  ))}
+                {upcomingEvents.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {upcomingEvents.map((event) => (
+                      <EventCard key={event.id} {...event} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-600 mb-4">No upcoming events</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        router.push(`/cca-admin/${resolvedParams.id}/events/create`);
+                      }}
+                      className="px-6 py-2 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors"
+                    >
+                      Create Event
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Sessions */}
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl md:text-2xl font-bold text-black">
+                    Upcoming Sessions
+                  </h2>
+                  <button
+                    onClick={() => router.push(`/cca-admin/${resolvedParams.id}/sessions`)}
+                    className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    Manage Sessions
+                  </button>
                 </div>
+
+                {upcomingSessions.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {upcomingSessions.map((session) => (
+                      <SessionCard key={session.id} {...session} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-600 mb-4">No upcoming sessions</p>
+                    <button
+                      onClick={() => router.push(`/cca-admin/${resolvedParams.id}/sessions`)}
+                      className="px-6 py-2 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors"
+                    >
+                      Create Session
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Right Column - Stats */}
             <div className="space-y-6">
-              {/* Active Members Section */}
+              {/* At a Glance Section */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl md:text-2xl font-bold text-black mb-6">
-                  Active Members
+                  At a Glance
                 </h2>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div className="bg-[#F5F5F5] p-4 rounded-lg">
                     <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                      -
+                      {memberCount}
                     </div>
                     <div className="text-sm text-gray-600">
-                      Active Members (Coming Soon)
+                      Active Members
                     </div>
                   </div>
 
                   <div className="bg-[#F5F5F5] p-4 rounded-lg">
                     <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                      -
+                      {upcomingEvents.length}
                     </div>
                     <div className="text-sm text-gray-600">
-                      Upcoming Events (Coming Soon)
+                      Upcoming Events
                     </div>
                   </div>
+
+                  <div className="bg-[#F5F5F5] p-4 rounded-lg">
+                    <div className="text-3xl md:text-4xl font-bold text-black mb-1">
+                      {upcomingSessions.length}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Upcoming Sessions
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h2 className="text-xl md:text-2xl font-bold text-black mb-6">
+                  Quick Actions
+                </h2>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(`/cca-admin/${resolvedParams.id}/events/create`);
+                    }}
+                    className="w-full bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"
+                  >
+                    Create Event
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(`/cca-admin/${resolvedParams.id}/sessions`);
+                    }}
+                    className="w-full bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"
+                  >
+                    Create Session
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(`/cca-admin/${resolvedParams.id}/members`);
+                    }}
+                    className="w-full bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"
+                  >
+                    Manage Members
+                  </button>
                 </div>
               </div>
             </div>

@@ -3,8 +3,30 @@ import PhotoGallery from "@/components/PhotoGallery";
 import CCADataSection from "@/components/CCADataSection";
 import ServiceCard from "@/components/ServiceCard";
 import EventCarousel from "@/components/EventCarousel";
+import EventCard from "@/components/EventCard";
+import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
-export default function Landing() {
+export default async function Landing() {
+  // Fetch upcoming published events
+  const supabase = await createClient();
+  const { data: eventsData } = await supabase
+    .from('events')
+    .select('*')
+    .eq('status', 'published')
+    .gte('date', new Date().toISOString())
+    .order('date', { ascending: true })
+    .limit(6);
+
+  const upcomingEvents = eventsData || [];
+
+  // Transform for carousel (using first 5 events)
+  const carouselEvents = upcomingEvents.slice(0, 5).map(event => ({
+    title: event.title,
+    description: event.description || 'Join us for this exciting event!',
+    image: event.poster_url || '/assets/cca-category-image/smc-1.jpg',
+  }));
+
   return (
     <div className="min-h-screen bg-[#FAFBFD]">
       {/* Navigation Bar */}
@@ -84,38 +106,82 @@ export default function Landing() {
               </h2>
 
               {/* Event Carousel */}
-              <EventCarousel
-                events={[
-                  {
-                    title: "INTER-HALL GAMES 2024",
-                    description: "Join us for the annual Inter-Hall Games featuring basketball, soccer, and badminton competitions among residential halls",
-                    image: "/assets/cca-category-image/smc-1.jpg",
-                  },
-                  {
-                    title: "CULTURAL NIGHT",
-                    description: "Experience a vibrant showcase of diverse cultures through traditional dances, music performances, and authentic cuisine",
-                    image: "/assets/cca-category-image/Performing-Arts-Nritya.jpg",
-                  },
-                  {
-                    title: "HACKATHON 2024",
-                    description: "24-hour coding challenge where students collaborate to build innovative tech solutions for real-world problems",
-                    image: "/assets/cca-category-image/Performing-Arts-Pamc.jpg",
-                  },
-                  {
-                    title: "COMMUNITY SERVICE DAY",
-                    description: "Make a difference in the community through volunteering activities at local charities and community centers",
-                    image: "/assets/cca-category-image/Performing-Arts-Breakers.jpg",
-                  },
-                  {
-                    title: "LEADERSHIP SUMMIT",
-                    description: "Develop your leadership potential through workshops, networking sessions, and inspiring talks from industry leaders",
-                    image: "/assets/cca-category-image/smc-2.jpg",
-                  },
-                ]}
-              />
+              {carouselEvents.length > 0 ? (
+                <EventCarousel events={carouselEvents} />
+              ) : (
+                <EventCarousel
+                  events={[
+                    {
+                      title: "INTER-HALL GAMES 2024",
+                      description: "Join us for the annual Inter-Hall Games featuring basketball, soccer, and badminton competitions among residential halls",
+                      image: "/assets/cca-category-image/smc-1.jpg",
+                    },
+                    {
+                      title: "CULTURAL NIGHT",
+                      description: "Experience a vibrant showcase of diverse cultures through traditional dances, music performances, and authentic cuisine",
+                      image: "/assets/cca-category-image/Performing-Arts-Nritya.jpg",
+                    },
+                    {
+                      title: "HACKATHON 2024",
+                      description: "24-hour coding challenge where students collaborate to build innovative tech solutions for real-world problems",
+                      image: "/assets/cca-category-image/Performing-Arts-Pamc.jpg",
+                    },
+                  ]}
+                />
+              )}
+
+              {/* Browse All Events Link */}
+              {upcomingEvents.length > 0 && (
+                <div className="text-center mt-8">
+                  <Link href="/events">
+                    <button className="px-8 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors">
+                      Browse All Events
+                    </button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </section>
+
+        {/* Featured Events Grid */}
+        {upcomingEvents.length > 0 && (
+          <section className="mb-12">
+            <div className="px-4 sm:px-8 md:px-16 lg:px-24">
+              <div className="max-w-7xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-3xl md:text-4xl font-bold text-black">
+                    Featured Events
+                  </h2>
+                  <Link href="/events" className="text-blue-600 hover:text-blue-800 font-medium underline">
+                    View All
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {upcomingEvents.slice(0, 6).map((event: any) => (
+                    <EventCard
+                      key={event.id}
+                      id={event.id}
+                      title={event.title}
+                      cca_name="CCA"
+                      date={event.date}
+                      start_time={event.start_time}
+                      end_time={event.end_time}
+                      location={event.location}
+                      poster_url={event.poster_url}
+                      max_attendees={event.max_attendees}
+                      current_registrations={0}
+                      spots_remaining={event.max_attendees}
+                      is_full={false}
+                      status={event.status}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

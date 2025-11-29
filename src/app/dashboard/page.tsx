@@ -1,7 +1,9 @@
 import NavbarClient from "@/components/NavbarClient";
 import CCACard from "@/components/CCACard";
+import EventCard from "@/components/EventCard";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -68,6 +70,49 @@ export default async function Dashboard() {
     },
   ];
 
+  // Fetch upcoming events the user has registered for
+  const { data: registeredEvents } = await supabase
+    .from('attendance')
+    .select(`
+      event_id,
+      events (
+        id,
+        cca_id,
+        title,
+        description,
+        date,
+        start_time,
+        end_time,
+        location,
+        poster_url,
+        max_attendees,
+        status,
+        created_at,
+        updated_at
+      )
+    `)
+    .eq('user_id', user.id)
+    .gte('events.date', new Date().toISOString())
+    .eq('events.status', 'published')
+    .order('events.date', { ascending: true })
+    .limit(3);
+
+  // Transform the data to match EventWithDetails type
+  const upcomingEvents = registeredEvents
+    ?.map((record: any) => record.events)
+    .filter((event: any) => event !== null)
+    .map((event: any) => ({
+      ...event,
+      cca_name: 'CCA', // Will be enriched on client side if needed
+      current_registrations: 0,
+      spots_remaining: null,
+      is_full: false,
+      is_registered: true,
+    })) || [];
+
+  // Get the next upcoming event for the hero section
+  const nextEvent = upcomingEvents[0] || null;
+
   return (
     <div className="min-h-screen bg-[#FAFBFD]">
       {/* Navigation Bar */}
@@ -113,9 +158,11 @@ export default async function Dashboard() {
               <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
                 My CCA's
               </button>
-              <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
-                My Events
-              </button>
+              <Link href="/events?filter=registered">
+                <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
+                  My Events
+                </button>
+              </Link>
               <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
                 Settings
               </button>
@@ -162,46 +209,38 @@ export default async function Dashboard() {
                   </div>
                 </div>
 
-                {/* Upcoming Event Section */}
+                {/* My Registered Events Section */}
                 <div className="bg-white p-6 rounded-lg">
-                  <h2 className="text-xl md:text-2xl font-bold text-black mb-6">
-                    Upcoming Event
-                  </h2>
-
-                  <div className="flex flex-col sm:flex-row gap-6">
-                    {/* Date Box */}
-                    <div className="flex-shrink-0 bg-[#F5F5F5] p-6 text-center rounded-lg">
-                      <div className="text-4xl md:text-5xl font-bold text-black">
-                        Sept 24
-                      </div>
-                      <div className="text-sm md:text-base text-gray-600 mt-2">
-                        Wednesday
-                      </div>
-                      <div className="text-sm md:text-base text-gray-600">
-                        5PM
-                      </div>
-                    </div>
-
-                    {/* Event Details */}
-                    <div className="flex-grow">
-                      <p className="text-[#F44336] text-sm md:text-base font-semibold mb-2 uppercase">
-                        Sports
-                      </p>
-                      <h3 className="text-xl md:text-2xl font-bold text-black mb-2">
-                        Run with Run Club
-                      </h3>
-                      <p className="text-sm md:text-base text-gray-600 mb-4">
-                        Track Field
-                      </p>
-                    </div>
-
-                    {/* Details Button */}
-                    <div className="flex-shrink-0 self-start">
-                      <button className="px-6 py-2 bg-[#F44336] text-white font-semibold rounded hover:bg-[#d32f2f] transition-colors">
-                        Details
-                      </button>
-                    </div>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl md:text-2xl font-bold text-black">
+                      My Registered Events
+                    </h2>
+                    <Link
+                      href="/events?filter=registered"
+                      className="text-sm md:text-base text-blue-600 hover:text-blue-800 font-medium underline"
+                    >
+                      View All
+                    </Link>
                   </div>
+
+                  {upcomingEvents.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {upcomingEvents.map((event) => (
+                        <EventCard key={event.id} {...event} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <p className="text-gray-600 mb-4">
+                        You haven't registered for any events yet
+                      </p>
+                      <Link href="/events">
+                        <button className="px-6 py-2 bg-[#F44336] text-white font-semibold rounded hover:bg-[#d32f2f] transition-colors">
+                          Browse Events
+                        </button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -225,7 +264,7 @@ export default async function Dashboard() {
 
                     <div className="bg-[#F5F5F5] p-4 rounded-lg">
                       <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                        1
+                        {upcomingEvents.length}
                       </div>
                       <div className="text-sm md:text-base text-gray-600">
                         Upcoming Events
@@ -244,12 +283,16 @@ export default async function Dashboard() {
                     <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
                       Find new CCA
                     </button>
-                    <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
-                      Browse Events
-                    </button>
-                    <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
-                      View Registrations
-                    </button>
+                    <Link href="/events">
+                      <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center w-full">
+                        Browse Events
+                      </button>
+                    </Link>
+                    <Link href="/events?filter=registered">
+                      <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center w-full">
+                        View Registrations
+                      </button>
+                    </Link>
                     <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
                       Update Profile
                     </button>

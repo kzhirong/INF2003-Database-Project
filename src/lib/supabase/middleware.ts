@@ -112,16 +112,12 @@ export async function updateSession(request: NextRequest) {
         }
       }
 
-      // CCA Admin restrictions: Can access their dashboard, members page, and edit page
+      // CCA Admin restrictions: Can access their CCA admin pages and edit page
       if (role === 'cca_admin') {
-        const allowedPaths = [
-          `/cca-admin/${cca_id}`,
-          `/cca-admin/${cca_id}/members`,
-          `/ccas/${cca_id}/edit`
-        ]
-        const isAllowedPath = allowedPaths.some(path => request.nextUrl.pathname === path)
-
-        if (!isAllowedPath) {
+        const isOwnCCAAdminPath = request.nextUrl.pathname.startsWith(`/cca-admin/${cca_id}`)
+        const isOwnCCAEditPath = request.nextUrl.pathname === `/ccas/${cca_id}/edit`
+        
+        if (!isOwnCCAAdminPath && !isOwnCCAEditPath) {
           // Redirect CCA admin back to their dashboard if they try to access anything else
           const url = request.nextUrl.clone()
           url.pathname = `/cca-admin/${cca_id}`
