@@ -32,9 +32,11 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
   const [commitment, setCommitment] = useState("Schedule Based");
   const [sportType, setSportType] = useState("Competitive");
 
-  // Hero section
+  // Additional Information section
   const [heroImage, setHeroImage] = useState("");
   const [shortDescription, setShortDescription] = useState("");
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null);
 
   // Dynamic content blocks
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -93,6 +95,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         setCommitment(cca.commitment || "Schedule Based");
         setSportType(cca.sportType || "Competitive");
         setHeroImage(cca.heroImage || "");
+        setHeroImagePreview(cca.heroImage || null); // Set preview if image exists
         setShortDescription(cca.shortDescription || "");
         setBlocks(cca.blocks || []);
       } else {
@@ -132,11 +135,82 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
     );
   };
 
+  const handleHeroImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('File size exceeds 5MB limit');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Store file and create preview
+    setHeroImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setHeroImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveHeroImage = () => {
+    setHeroImageFile(null);
+    // Only clear preview if it's a local file preview (starts with 'data:')
+    // Keep existing URL if it's from the server
+    if (heroImagePreview?.startsWith('data:')) {
+      setHeroImagePreview(heroImage || null);
+    } else {
+      setHeroImage("");
+      setHeroImagePreview(null);
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
       setError("");
       setSuccess("");
+
+      // Upload hero image if a new file is selected
+      let uploadedHeroImageUrl = heroImage;
+      if (heroImageFile) {
+        try {
+          const formData = new FormData();
+          formData.append('file', heroImageFile);
+          formData.append('folder', 'hero-images');
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          const uploadData = await uploadResponse.json();
+
+          if (uploadData.success) {
+            uploadedHeroImageUrl = uploadData.data.url;
+          } else {
+            setError(uploadData.error || 'Failed to upload hero image');
+            setSaving(false);
+            return;
+          }
+        } catch (uploadError: any) {
+          console.error('Error uploading hero image:', uploadError);
+          setError('Failed to upload hero image');
+          setSaving(false);
+          return;
+        }
+      }
 
       // Validation: Check if Schedule Based is selected but no days are chosen
       if (commitment === "Schedule Based" && schedule.length === 0) {
@@ -185,7 +259,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
       // Build the CCA data object
       const ccaData: any = {
         _id: resolvedParams.id,
-        heroImage,
+        heroImage: uploadedHeroImageUrl,
         shortDescription,
         blocks
       };
@@ -231,6 +305,14 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
 
       if (data.success) {
         setSuccess("Changes saved successfully!");
+
+        // Clear the file state and update heroImage with the uploaded URL
+        if (heroImageFile) {
+          setHeroImage(uploadedHeroImageUrl);
+          setHeroImageFile(null);
+          setHeroImagePreview(uploadedHeroImageUrl);
+        }
+
         // Scroll to top to show success message
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -604,41 +686,97 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
               </div>
             </div>
 
-            {/* Hero Section */}
+            {/* Additional Information Section */}
             <div className="bg-white rounded-lg shadow-sm p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b-2 border-[#F44336]">
-                Hero Section
+                Additional Information
               </h2>
-              <p className="text-sm text-gray-500 mb-6">
-                This appears at the top of your CCA page
-              </p>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Hero Banner Upload */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Hero Image URL
+                    Hero Banner
                   </label>
-                  <input
-                    type="text"
-                    value={heroImage}
-                    onChange={(e) => setHeroImage(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    placeholder="/uploads/basketball-hero.jpg"
-                  />
-                  <p className="text-sm text-gray-500 mt-2">Recommended size: 1200x400px</p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Recommended ratio: 3:1 (e.g., 1200x400px) • Max file size: 5MB • Formats: JPEG, PNG, GIF, WebP
+                  </p>
+
+                  {heroImagePreview ? (
+                    <div className="space-y-3">
+                      {/* Image Preview - 3:1 aspect ratio */}
+                      <div className="relative w-full aspect-[3/1] border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <img
+                          src={heroImagePreview}
+                          alt="Hero banner preview"
+                          className="w-full h-full object-cover"
+                        />
+                        {heroImageFile && (
+                          <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg">
+                            Not saved yet
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Remove Button */}
+                      <button
+                        type="button"
+                        onClick={handleRemoveHeroImage}
+                        className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                      >
+                        Remove Image
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="file"
+                        id="hero-image-upload"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        onChange={handleHeroImageSelect}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="hero-image-upload"
+                        className="flex flex-col items-center justify-center w-full aspect-[3/1] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#F44336] hover:bg-gray-50 transition-colors"
+                      >
+                        <svg
+                          className="w-12 h-12 text-gray-400 mb-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                        <p className="text-sm text-gray-600 mb-1">
+                          <span className="font-semibold text-[#F44336]">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">JPEG, PNG, GIF or WebP (max 5MB)</p>
+                      </label>
+                    </div>
+                  )}
                 </div>
 
+                {/* About Us */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Short Description
+                    About Us
                   </label>
                   <textarea
                     value={shortDescription}
                     onChange={(e) => setShortDescription(e.target.value)}
-                    rows={2}
+                    rows={3}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    placeholder="Brief description shown on hero section"
+                    placeholder="Write a brief description about the CCA"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This will be displayed prominently on your CCA page
+                  </p>
                 </div>
               </div>
             </div>

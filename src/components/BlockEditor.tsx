@@ -168,7 +168,7 @@ export default function BlockEditor({ blocks, onBlocksChange }: BlockEditorProps
         <button
           type="button"
           onClick={() => setShowAddMenu(!showAddMenu)}
-          className="w-full px-6 py-4 bg-[#F44336] text-white rounded-lg font-semibold hover:bg-[#D32F2F] transition-colors flex items-center justify-center gap-2"
+          className="w-full px-8 py-4 bg-[#F44336] text-white rounded-lg font-semibold text-lg hover:bg-[#D32F2F] transition-colors flex items-center justify-center gap-2"
         >
           <span className="text-2xl">+</span>
           <span>Add Section</span>

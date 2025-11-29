@@ -27,7 +27,8 @@ const ccaSchema = new mongoose.Schema({
       endTime: String,    // "20:00" (24-hour format from <input type="time">)
       location: String    // "Sports Hall, Level 1"
     }],
-    required: false  // Only required for "Schedule Based" commitment
+    required: false,  // Only required for "Schedule Based" commitment
+    default: []
   },
   commitment: {
     type: String,
@@ -36,13 +37,25 @@ const ccaSchema = new mongoose.Schema({
   },
   sportType: {
     type: String,
-    enum: ['Competitive', 'Recreational', 'Both']
+    enum: ['Competitive', 'Recreational', 'Both'],
+    default: null
   },
-  heroImage: String,
-  shortDescription: String,
+  heroImage: {
+    type: String,
+    default: ''
+  },
+  profileImage: {
+    type: String,
+    default: ''
+  },
+  shortDescription: {
+    type: String,
+    default: ''
+  },
   // Dynamic content blocks - stored as flexible array
   blocks: {
-    type: [mongoose.Schema.Types.Mixed] // Allows flexible structure
+    type: [mongoose.Schema.Types.Mixed], // Allows flexible structure
+    default: []
   },
   // Metadata
   createdBy: {
