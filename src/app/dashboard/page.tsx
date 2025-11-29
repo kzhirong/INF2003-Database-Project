@@ -138,26 +138,32 @@ export default function Dashboard() {
       if (error) throw error;
 
       if (attendanceRecords && attendanceRecords.length > 0) {
-        const eventIds = attendanceRecords.map(record => record.event_id);
-        
-        // Fetch event details
-        const { data: events, error: eventsError } = await supabase
-          .from('events')
-          .select('*')
-          .in('id', eventIds)
-          .gte('date', new Date().toISOString())
-          .eq('status', 'published')
-          .order('date', { ascending: true })
-          .limit(3);
+        const eventIds = attendanceRecords
+          .map((record) => record.event_id)
+          .filter((id) => id !== null);
 
-        if (eventsError) throw eventsError;
+        if (eventIds.length > 0) {
+          // Fetch event details
+          const { data: events, error: eventsError } = await supabase
+            .from('events')
+            .select('*')
+            .in('id', eventIds)
+            .gte('date', new Date().toISOString())
+            .eq('status', 'published')
+            .order('date', { ascending: true })
+            .limit(3);
 
-        setUpcomingEvents(events || []);
+          if (eventsError) throw eventsError;
+
+          setUpcomingEvents(events || []);
+        } else {
+          setUpcomingEvents([]);
+        }
       } else {
         setUpcomingEvents([]);
       }
     } catch (error) {
-      console.error('Error fetching upcoming events:', error);
+      console.error('Error fetching upcoming events:', JSON.stringify(error, null, 2));
       setUpcomingEvents([]);
     }
   };
