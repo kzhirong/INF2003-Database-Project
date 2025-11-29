@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import NavbarClient from "@/components/NavbarClient";
 import CCACard from "@/components/CCACard";
 import EventCard from "@/components/EventCard";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -23,12 +21,19 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [myCCAs, setMyCCAs] = useState<MyCCA[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
-    fetchMyCCAs();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchMyCCAs();
+      fetchUpcomingEvents();
+    }
+  }, [user]);
 
   const checkAuth = async () => {
     const supabase = createClient();
@@ -44,7 +49,7 @@ export default function Dashboard() {
     // Fetch user details
     const { data, error: userError } = await supabase
       .from("users")
-      .select("*")
+      .select("*, student_details(*)")
       .eq("id", user.id)
       .single();
 
@@ -60,32 +65,100 @@ export default function Dashboard() {
     if (data.role === "system_admin") {
       router.push("/admin");
     } else if (data.role === "cca_admin") {
-      router.push(`/cca-admin/${data.cca_id}`);
+      // Get CCA ID from cca_admin_details
+      const { data: adminData } = await supabase
+        .from("cca_admin_details")
+        .select("cca_id")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (adminData?.cca_id) {
+        router.push(`/cca-admin/${adminData.cca_id}`);
+      }
     }
   };
 
   const fetchMyCCAs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/enrollments/my-ccas');
-      const data = await response.json();
+      const supabase = createClient();
+      
+      // Fetch memberships
+      const { data: memberships, error } = await supabase
+        .from("members")
+        .select("cca_id")
+        .eq("user_id", user.id);
 
-      if (data.success && data.data) {
-        const transformed = data.data.map((enrollment: any) => ({
-          id: enrollment.cca?._id || enrollment.cca_id,
-          title: enrollment.cca?.name || "Unknown CCA",
-          category: enrollment.cca?.category || "General",
-          memberStatus: "Member",
-          upcomingEvent: enrollment.cca?.schedule?.[0]
-            ? `${enrollment.cca.schedule[0].day}, ${enrollment.cca.schedule[0].startTime}, ${enrollment.cca.schedule[0].location}`
-            : "No scheduled sessions"
-        }));
+      if (error) throw error;
+
+      if (memberships && memberships.length > 0) {
+        // Fetch CCA details from MongoDB
+        const ccaPromises = memberships.map(async (membership) => {
+          const response = await fetch(`/api/ccas/${membership.cca_id}`);
+          const data = await response.json();
+          return data.success ? data.data : null;
+        });
+
+        const ccasData = await Promise.all(ccaPromises);
+        
+        const transformed = ccasData
+          .filter(cca => cca !== null)
+          .map((cca: any) => ({
+            id: cca._id,
+            title: cca.name || "Unknown CCA",
+            category: cca.category || "General",
+            memberStatus: "Member",
+            upcomingEvent: cca.schedule?.[0]
+              ? `${cca.schedule[0].day}, ${cca.schedule[0].startTime}, ${cca.schedule[0].location}`
+              : "No scheduled sessions"
+          }));
+        
         setMyCCAs(transformed);
+      } else {
+        setMyCCAs([]);
       }
     } catch (error) {
       console.error('Error fetching CCAs:', error);
+      setMyCCAs([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUpcomingEvents = async () => {
+    try {
+      const supabase = createClient();
+      
+      // Fetch user's registered events
+      const { data: attendanceRecords, error } = await supabase
+        .from('attendance')
+        .select('event_id')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      if (attendanceRecords && attendanceRecords.length > 0) {
+        const eventIds = attendanceRecords.map(record => record.event_id);
+        
+        // Fetch event details
+        const { data: events, error: eventsError } = await supabase
+          .from('events')
+          .select('*')
+          .in('id', eventIds)
+          .gte('date', new Date().toISOString())
+          .eq('status', 'published')
+          .order('date', { ascending: true })
+          .limit(3);
+
+        if (eventsError) throw eventsError;
+
+        setUpcomingEvents(events || []);
+      } else {
+        setUpcomingEvents([]);
+      }
+    } catch (error) {
+      console.error('Error fetching upcoming events:', error);
+      setUpcomingEvents([]);
     }
   };
 
@@ -106,74 +179,9 @@ export default function Dashboard() {
     );
   }
 
-  const userFullName = userData?.name || "Student";
+  const userFullName = (userData.student_details as any)?.[0]?.name || userData.email || "Student";
   const userEmail = user.email || "";
-  const userInitials = getInitials(userData?.name);
-
-  // TODO: Fetch enrolled CCAs from database when enrollment is implemented
-  const myCCAs = [
-    {
-      title: "BASKETBALL",
-      category: "Sports",
-      memberStatus: "Member",
-      upcomingEvent: "Monday, 6PM, Sports Hall",
-    },
-    {
-      title: "HOCKEY",
-      category: "Sports",
-      memberStatus: "Member",
-      upcomingEvent: "Tuesday, 6PM, Sports Hall",
-    },
-    {
-      title: "FLOORBALL",
-      category: "Sports",
-      memberStatus: "Member",
-      upcomingEvent: "Tuesday, 4PM, Sports Hall",
-    },
-  ];
-
-  // Fetch upcoming events the user has registered for
-  const { data: registeredEvents } = await supabase
-    .from('attendance')
-    .select(`
-      event_id,
-      events (
-        id,
-        cca_id,
-        title,
-        description,
-        date,
-        start_time,
-        end_time,
-        location,
-        poster_url,
-        max_attendees,
-        status,
-        created_at,
-        updated_at
-      )
-    `)
-    .eq('user_id', user.id)
-    .gte('events.date', new Date().toISOString())
-    .eq('events.status', 'published')
-    .order('events.date', { ascending: true })
-    .limit(3);
-
-  // Transform the data to match EventWithDetails type
-  const upcomingEvents = registeredEvents
-    ?.map((record: any) => record.events)
-    .filter((event: any) => event !== null)
-    .map((event: any) => ({
-      ...event,
-      cca_name: 'CCA', // Will be enriched on client side if needed
-      current_registrations: 0,
-      spots_remaining: null,
-      is_full: false,
-      is_registered: true,
-    })) || [];
-
-  // Get the next upcoming event for the hero section
-  const nextEvent = upcomingEvents[0] || null;
+  const userInitials = getInitials((userData.student_details as any)?.[0]?.name);
 
   return (
     <div className="min-h-screen bg-[#FAFBFD]">
@@ -218,7 +226,7 @@ export default function Dashboard() {
                 Overview
               </button>
               <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
-                My CCA&apos;s
+                My CCAs
               </button>
               <Link href="/events?filter=registered">
                 <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
@@ -250,12 +258,12 @@ export default function Dashboard() {
                     <h2 className="text-xl md:text-2xl font-bold text-black">
                       My CCAs
                     </h2>
-                    <a
+                    <Link
                       href="/ccas"
                       className="text-sm md:text-base text-blue-600 hover:text-blue-800 font-medium underline"
                     >
                       View All
-                    </a>
+                    </Link>
                   </div>
 
                   {loading ? (
@@ -304,7 +312,7 @@ export default function Dashboard() {
                   ) : (
                     <div className="text-center py-8 bg-gray-50 rounded-lg">
                       <p className="text-gray-600 mb-4">
-                        You haven't registered for any events yet
+                        You haven&apos;t registered for any events yet
                       </p>
                       <Link href="/events">
                         <button className="px-6 py-2 bg-[#F44336] text-white font-semibold rounded hover:bg-[#d32f2f] transition-colors">
@@ -330,7 +338,7 @@ export default function Dashboard() {
                         {myCCAs.length}
                       </div>
                       <div className="text-sm md:text-base text-gray-600">
-                        Active CCA&apos;s
+                        Active CCAs
                       </div>
                     </div>
 

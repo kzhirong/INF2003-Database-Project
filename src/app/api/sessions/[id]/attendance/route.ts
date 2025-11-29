@@ -52,22 +52,29 @@ export async function GET(
       );
     }
 
-    // Get all attendance records (only attended=true for sessions)
+    // Get ALL attendance records (both attended and not attended)
     const { data: attendanceRecords, error } = await supabase
       .from("attendance")
-      .select("id, user_id, attended, marked_by, marked_at, created_at")
+      .select("id, user_id, attended, marked_by, marked_at")
       .eq("session_id", sessionId)
-      .eq("attended", true)
-      .order("created_at", { ascending: true });
+      .order("marked_at", { ascending: true });
 
     if (error) throw error;
 
-    // Fetch user data for each attendance record
+    // Fetch student details from users and student_details tables
     const enrichedAttendance = await Promise.all(
       (attendanceRecords || []).map(async (record: any) => {
-        const { data: userData } = await supabase.auth.admin.getUserById(
-          record.user_id
-        );
+        const { data: userData } = await supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            student_details:student_details(name, student_id, phone_number)
+          `)
+          .eq('id', record.user_id)
+          .single();
+
+        const studentDetails = (userData?.student_details as any)?.[0];
 
         return {
           id: record.id,
@@ -75,34 +82,36 @@ export async function GET(
           attended: record.attended,
           marked_by: record.marked_by,
           marked_at: record.marked_at,
-          created_at: record.created_at,
-          student: userData?.user
+          student: studentDetails
             ? {
-                id: userData.user.id,
-                name: userData.user.user_metadata?.name || "Unknown",
-                student_id: userData.user.user_metadata?.student_id || "N/A",
-                email: userData.user.email || "",
-                phone_number: userData.user.user_metadata?.phone_number || null,
+                id: record.user_id,
+                name: studentDetails.name || "Unknown",
+                student_id: studentDetails.student_id || "N/A",
+                email: userData?.email || "",
+                phone_number: studentDetails.phone_number || null,
               }
             : {
                 id: record.user_id,
                 name: "Unknown",
                 student_id: "N/A",
-                email: "",
+                email: userData?.email || "",
                 phone_number: null,
               },
         };
       })
     );
 
-    // Get total CCA members for context
-    const { count: totalMembers } = await supabase
+    // Get total from attendance records
+    const totalMarked = enrichedAttendance.filter(rec => rec.attended).length;
+    const { count: totalCCAMembers } = await supabase
       .from("cca_membership")
       .select("*", { count: "exact", head: true })
       .eq("cca_id", session.cca_id);
 
     // Calculate summary
-    const attended = enrichedAttendance.length;
+    const totalMembers = enrichedAttendance.length;
+    const attended = enrichedAttendance.filter(rec => rec.attended).length;
+    const absent = totalMembers - attended;
     const attendance_rate =
       totalMembers && totalMembers > 0 ? (attended / totalMembers) * 100 : 0;
 
@@ -110,10 +119,10 @@ export async function GET(
       success: true,
       data: enrichedAttendance,
       summary: {
-        total_members: totalMembers || 0,
-        total_marked: attended,
+        total_members: totalMembers,
+        total_marked: totalMembers,
         attended,
-        absent: (totalMembers || 0) - attended,
+        absent,
         attendance_rate: parseFloat(attendance_rate.toFixed(2)),
       },
     });
@@ -190,51 +199,39 @@ export async function POST(
       );
     }
 
-    // Check for existing attendance records to avoid duplicates
-    const { data: existingRecords } = await supabase
-      .from("attendance")
-      .select("user_id")
-      .eq("session_id", sessionId)
-      .in("user_id", user_ids);
+    // Since records are pre-created, we UPDATE them instead of INSERT
+    // Step 1: Mark selected users as attended = true
+    if (user_ids.length > 0) {
+      const { error: updateError } = await supabase
+        .from("attendance")
+        .update({
+          attended: true,
+          marked_by: user.id,
+          marked_at: new Date().toISOString(),
+        })
+        .eq("session_id", sessionId)
+        .in("user_id", user_ids);
 
-    const existingUserIds = new Set(
-      existingRecords?.map((r) => r.user_id) || []
-    );
-
-    // Filter out users who already have attendance records
-    const newUserIds = user_ids.filter((id) => !existingUserIds.has(id));
-
-    if (newUserIds.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "All selected students already marked as attended",
-        created_count: 0,
-        skipped_count: user_ids.length,
-      });
+      if (updateError) throw updateError;
     }
 
-    // Create attendance records for new attendees
-    const attendanceRecords = newUserIds.map((user_id) => ({
-      session_id: sessionId,
-      user_id,
-      attended: true,
-      marked_by: user.id,
-      marked_at: new Date().toISOString(),
-    }));
-
-    const { data: created, error } = await supabase
+    // Step 2: Mark unselected users as attended = false
+    const { error: resetError } = await supabase
       .from("attendance")
-      .insert(attendanceRecords)
-      .select();
+      .update({
+        attended: false,
+        marked_by: null,
+        marked_at: null,
+      })
+      .eq("session_id", sessionId)
+      .not("user_id", "in", `(${user_ids.length > 0 ? user_ids.map(id => `"${id}"`).join(",") : '""'})`);
 
-    if (error) throw error;
+    if (resetError) throw resetError;
 
     return NextResponse.json({
       success: true,
-      message: `Successfully marked attendance for ${newUserIds.length} students`,
-      created_count: newUserIds.length,
-      skipped_count: user_ids.length - newUserIds.length,
-      data: created,
+      message: `Successfully marked attendance for ${user_ids.length} students`,
+      attended_count: user_ids.length,
     });
   } catch (error: any) {
     console.error("Error marking session attendance:", error);

@@ -30,16 +30,24 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // Enrich with CCA names from MongoDB and user data
+    // Enrich with CCA names from MongoDB and student data
     await connectDB();
     const enrichedMemberships = await Promise.all(
       (memberships || []).map(async (membership: any) => {
         const cca = await CCA.findById(membership.cca_id).lean();
 
-        // Fetch user data from auth.users via admin client
-        const { data: userData } = await supabase.auth.admin.getUserById(
-          membership.user_id
-        );
+        // Fetch user and student details from public tables
+        const { data: userData } = await supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            student_details:student_details(name, student_id, phone_number)
+          `)
+          .eq('id', membership.user_id)
+          .single();
+
+        const studentDetails = (userData?.student_details as any)?.[0];
 
         return {
           id: membership.id,
@@ -47,13 +55,13 @@ export async function GET(request: NextRequest) {
           cca_name: cca?.name || "Unknown CCA",
           user_id: membership.user_id,
           created_at: membership.created_at,
-          student: userData?.user
+          student: studentDetails
             ? {
-                id: userData.user.id,
-                name: userData.user.user_metadata?.name || "Unknown",
-                student_id: userData.user.user_metadata?.student_id || "N/A",
-                email: userData.user.email || "",
-                phone_number: userData.user.user_metadata?.phone_number || null,
+                id: membership.user_id,
+                name: studentDetails.name || "Unknown",
+                student_id: studentDetails.student_id || "N/A",
+                email: userData?.email || "",
+                phone_number: studentDetails.phone_number || null,
               }
             : null,
         };

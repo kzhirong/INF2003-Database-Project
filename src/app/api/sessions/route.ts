@@ -138,6 +138,32 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
+    // Auto-create attendance records for all CCA members (attended = false)
+    const { data: members, error: membersError } = await supabase
+      .from("cca_membership")
+      .select("user_id")
+      .eq("cca_id", body.cca_id);
+
+    if (membersError) {
+      console.error("Error fetching members:", membersError);
+      // Continue even if member fetch fails - session is already created
+    } else if (members && members.length > 0) {
+      const attendanceRecords = members.map((member) => ({
+        session_id: session.id,
+        user_id: member.user_id,
+        attended: false,
+      }));
+
+      const { error: attendanceError } = await supabase
+        .from("attendance")
+        .insert(attendanceRecords);
+
+      if (attendanceError) {
+        console.error("Error creating attendance records:", attendanceError);
+        // Continue even if attendance creation fails - session is created
+      }
+    }
+
     return NextResponse.json({ success: true, data: session }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating session:", error);

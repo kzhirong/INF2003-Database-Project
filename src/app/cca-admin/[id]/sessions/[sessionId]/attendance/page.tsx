@@ -83,26 +83,29 @@ export default function SessionAttendancePage({
         setSession(sessionResult.data);
       }
 
-      // Fetch all CCA members
-      const membersResponse = await fetch(`/api/memberships?cca_id=${ccaId}`);
-      const membersResult = await membersResponse.json();
-
-      if (membersResult.success) {
-        setMembers(membersResult.data);
-      }
-
-      // Fetch existing attendance
+      // Fetch attendance - this now contains ALL members (pre-created when session was created)
       const attendanceResponse = await fetch(
         `/api/sessions/${sessionId}/attendance`
       );
       const attendanceResult = await attendanceResponse.json();
 
       if (attendanceResult.success) {
+        // Use attendance data as members - it has all the student details we need
+        const membersFromAttendance = attendanceResult.data.map((record: any) => ({
+          id: record.id,
+          user_id: record.user_id,
+          student: record.student,
+        }));
+        
+        setMembers(membersFromAttendance);
         setAttendance(attendanceResult.data);
         setSummary(attendanceResult.summary);
+        
         // Set selected users to those who have attended
-        const attendedUserIds = new Set(
-          attendanceResult.data.map((record: AttendanceRecord) => record.user_id)
+        const attendedUserIds = new Set<string>(
+          attendanceResult.data
+            .filter((record: any) => record.attended)
+            .map((record: AttendanceRecord) => record.user_id)
         );
         setSelectedUsers(attendedUserIds);
       }
@@ -182,12 +185,13 @@ export default function SessionAttendancePage({
 
   // Filter members by search
   const filteredMembers = members.filter((member) => {
+    if (!member.student) return false; // Skip members without student data
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
-      member.student.name.toLowerCase().includes(query) ||
-      member.student.student_id.toLowerCase().includes(query) ||
-      member.student.email.toLowerCase().includes(query)
+      member.student.name?.toLowerCase().includes(query) ||
+      member.student.student_id?.toLowerCase().includes(query) ||
+      member.student.email?.toLowerCase().includes(query)
     );
   });
 
@@ -348,13 +352,13 @@ export default function SessionAttendancePage({
                     />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {member.student.name}
+                    {member.student?.name || 'Unknown'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {member.student.student_id}
+                    {member.student?.student_id || 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {member.student.email}
+                    {member.student?.email || 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span
