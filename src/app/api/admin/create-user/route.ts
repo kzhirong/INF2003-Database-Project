@@ -30,10 +30,43 @@ export async function POST(request: NextRequest) {
 
     // Get user data from request
     const body = await request.json();
-    const { email, password, role, full_name, student_id, course, year_of_study, phone_number, cca_id } = body;
+    const { email, password, role, name, student_id, course_id, phone_number, cca_id } = body;
 
     // Create admin client
     const adminClient = createAdminClient();
+
+    // Check for duplicates before creating user (for students)
+    if (role === 'student') {
+      if (student_id) {
+        const { data: existingId } = await adminClient
+          .from('student_details')
+          .select('id')
+          .eq('student_id', student_id)
+          .maybeSingle();
+        
+        if (existingId) {
+          return NextResponse.json(
+            { success: false, error: 'Student ID already exists' },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (phone_number) {
+        const { data: existingPhone } = await adminClient
+          .from('student_details')
+          .select('id')
+          .eq('phone_number', phone_number)
+          .maybeSingle();
+        
+        if (existingPhone) {
+          return NextResponse.json(
+            { success: false, error: 'Phone number already exists' },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     // Create user using admin client (doesn't affect current session)
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -42,45 +75,107 @@ export async function POST(request: NextRequest) {
       email_confirm: true, // Auto-confirm email
       user_metadata: {
         role,
-        full_name,
-        student_id,
-        course,
-        year_of_study,
-        phone_number,
-        cca_id,
       }
     });
 
     if (createError) {
       console.error('Error creating user:', createError);
+      console.error('Full error object:', JSON.stringify(createError, null, 2));
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to create user account';
+      
+      const errorMsg = createError.message?.toLowerCase() || '';
+      
+      // Check for duplicate email
+      if (errorMsg.includes('already') || 
+          errorMsg.includes('exists') ||
+          errorMsg.includes('duplicate') ||
+          errorMsg.includes('unique') ||
+          errorMsg.includes('constraint')) {
+        errorMessage = 'Email already exists';
+      } else if (errorMsg.includes('invalid') && errorMsg.includes('email')) {
+        errorMessage = 'Invalid email format';
+      } else if (errorMsg.includes('email')) {
+        errorMessage = 'Email error: ' + createError.message;
+      } else {
+        errorMessage = createError.message || 'Failed to create user account';
+      }
+      
       return NextResponse.json(
-        { success: false, error: createError.message },
-        { status: 500 }
+        { success: false, error: errorMessage },
+        { status: 400 }
       );
     }
 
     // Wait for trigger to complete
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Update the user's role and other fields in the users table
-    const updateData: any = { role, full_name };
-    if (student_id) updateData.student_id = student_id;
-    if (course) updateData.course = course;
-    if (year_of_study) updateData.year_of_study = year_of_study;
-    if (phone_number) updateData.phone_number = phone_number;
-    if (cca_id) updateData.cca_id = cca_id;
-
+    // Update the user's role in the users table (no name - comes from detail tables)
     const { error: updateError } = await adminClient
       .from('users')
-      .update(updateData)
+      .update({ role })
       .eq('id', newUser.user.id);
 
     if (updateError) {
       console.error('Error updating user data:', updateError);
+      // Rollback: Delete the created user
+      await adminClient.auth.admin.deleteUser(newUser.user.id);
       return NextResponse.json(
         { success: false, error: `User created but failed to update profile: ${updateError.message}` },
         { status: 500 }
       );
+    }
+
+    // If CCA admin, insert into cca_admin_details
+    if (role === 'cca_admin' && cca_id) {
+      const { error: adminDetailsError } = await adminClient
+        .from('cca_admin_details')
+        .insert({ user_id: newUser.user.id, cca_id });
+
+      if (adminDetailsError) {
+        console.error('Error creating CCA admin details:', adminDetailsError);
+        // Rollback: Delete the created user
+        await adminClient.auth.admin.deleteUser(newUser.user.id);
+        return NextResponse.json(
+          { success: false, error: `User created but failed to create CCA admin details: ${adminDetailsError.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // If student, insert into student_details (including name)
+    if (role === 'student') {
+      const { error: studentDetailsError } = await adminClient
+        .from('student_details')
+        .insert({
+          user_id: newUser.user.id,
+          name: name || 'Student',
+          student_id: student_id || '',
+          course_id: course_id || '',
+          phone_number: phone_number || null,
+        });
+
+      if (studentDetailsError) {
+        console.error('Error creating student details:', studentDetailsError);
+        // Rollback: Delete the created user
+        await adminClient.auth.admin.deleteUser(newUser.user.id);
+        
+        // Return specific error message if it's a constraint violation
+        if (studentDetailsError.code === '23505') { // Unique violation
+           if (studentDetailsError.message.includes('student_id')) {
+             return NextResponse.json({ success: false, error: 'Student ID already exists' }, { status: 400 });
+           }
+           if (studentDetailsError.message.includes('phone_number')) {
+             return NextResponse.json({ success: false, error: 'Phone number already exists' }, { status: 400 });
+           }
+        }
+
+        return NextResponse.json(
+          { success: false, error: `Failed to create student details: ${studentDetailsError.message}` },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({

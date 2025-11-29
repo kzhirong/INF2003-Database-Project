@@ -67,17 +67,28 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    console.log('Received CCA creation request:', JSON.stringify(body, null, 2));
+
     // Create new CCA with user as creator
-    const cca = await CCA.create({
+    const ccaData = {
       ...body,
       createdBy: user.id,
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    };
+
+    console.log('Creating CCA with data:', JSON.stringify(ccaData, null, 2));
+
+    const cca = await CCA.create(ccaData);
 
     return NextResponse.json({ success: true, data: cca }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating CCA:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      errors: error.errors
+    });
     return NextResponse.json(
       { success: false, error: error.message || 'Unknown error' },
       { status: 500 }

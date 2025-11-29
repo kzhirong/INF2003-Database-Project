@@ -110,33 +110,28 @@ export type Block =
   | StatsBlock
   | CTABlock;
 
+export interface ScheduleSession {
+  day: string;
+  startTime: string;  // "18:00" (24-hour format)
+  endTime: string;    // "20:00" (24-hour format)
+  location: string;   // "Sports Hall, Level 1"
+}
+
 export interface CCAPageData {
   // Fixed fields for filtering
   _id: string;
   name: string;
   category: string;
-  schedule: string[];
+  schedule?: ScheduleSession[];  // Only present for "Schedule Based" commitment
   commitment: string;
   sportType?: string;
 
-  // Hero section (always present)
+  // Hero section (optional)
   heroImage?: string;
   shortDescription?: string;
 
-  // Meeting details (always present in sidebar)
-  meetingDetails: {
-    time: string;
-    location: string;
-    contactEmail: string;
-  };
-
-  stats: {
-    currentMembers: number;
-    maxMembers: number;
-  };
-
   // Dynamic content blocks
-  blocks: Block[];
+  blocks?: Block[];
 
   // Metadata
   createdBy: string;

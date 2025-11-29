@@ -1,7 +1,52 @@
 import NavbarClient from "@/components/NavbarClient";
 import CCACard from "@/components/CCACard";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default function Dashboard() {
+export default async function Dashboard() {
+  const supabase = await createClient();
+
+  // Get current user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    redirect("/");
+  }
+
+  // Fetch user details from public.users table
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (userError || !userData) {
+    console.error("Error fetching user data:", userError);
+    redirect("/");
+  }
+
+  // Redirect non-students to their appropriate dashboard
+  if (userData.role === "system_admin") {
+    redirect("/admin");
+  } else if (userData.role === "cca_admin" && userData.cca_id) {
+    redirect(`/cca-admin/${userData.cca_id}`);
+  }
+
+  // Get user initials for avatar
+  const getInitials = (name: string | null) => {
+    if (!name) return "??";
+    const names = name.trim().split(" ");
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const userFullName = userData?.name || "Student";
+  const userEmail = user.email || "";
+  const userInitials = getInitials(userData?.name);
+
+  // TODO: Fetch enrolled CCAs from database when enrollment is implemented
   const myCCAs = [
     {
       title: "BASKETBALL",
@@ -46,16 +91,16 @@ export default function Dashboard() {
             <div className="flex items-center gap-6">
               {/* Profile Picture - Placeholder with initials */}
               <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 flex-shrink-0">
-                JO
+                {userInitials}
               </div>
 
               {/* User Info */}
               <div>
                 <h2 className="text-2xl md:text-3xl font-bold text-black mb-1">
-                  Jasmine Oolong
+                  {userFullName}
                 </h2>
                 <p className="text-base md:text-lg text-gray-600">
-                  2402498@sit.singaporetech.edu.sg
+                  {userEmail}
                 </p>
               </div>
             </div>

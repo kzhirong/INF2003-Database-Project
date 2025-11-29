@@ -186,64 +186,27 @@ export default function CCADetail({ params }: { params: Promise<{ id: string }> 
                 </button>
               </div>
 
-              {/* Meeting Details */}
-              <div className="mb-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Meeting Details</h3>
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <div className="text-gray-500 mb-1">Time</div>
-                    <div className="text-gray-900">{ccaData.meetingDetails.time}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 mb-1">Location</div>
-                    <div className="text-gray-900">{ccaData.meetingDetails.location}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 mb-1">Schedule</div>
-                    <div className="flex flex-wrap gap-2">
-                      {ccaData.schedule.map((day) => (
-                        <span
-                          key={day}
-                          className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold"
-                        >
-                          {day}
-                        </span>
-                      ))}
-                    </div>
+              {/* Schedule */}
+              {ccaData.schedule && ccaData.schedule.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Schedule</h3>
+                  <div className="space-y-3">
+                    {ccaData.schedule.map((session, index) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-3">
+                        <div className="font-semibold text-gray-900 mb-2">{session.day}</div>
+                        <div className="text-sm text-gray-700 space-y-1">
+                          <div>
+                            <span className="text-gray-500">Time:</span> {session.startTime} - {session.endTime}
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Location:</span> {session.location}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-
-              {/* Contact */}
-              <div className="mb-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Contact</h3>
-                <a
-                  href={`mailto:${ccaData.meetingDetails.contactEmail}`}
-                  className="text-[#F44336] hover:underline text-sm"
-                >
-                  {ccaData.meetingDetails.contactEmail}
-                </a>
-              </div>
-
-              {/* Members */}
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Members</h3>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-[#F44336] h-full"
-                        style={{
-                          width: `${(ccaData.stats.currentMembers / ccaData.stats.maxMembers) * 100}%`,
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {ccaData.stats.currentMembers}/{ccaData.stats.maxMembers}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

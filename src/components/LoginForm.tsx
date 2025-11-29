@@ -31,14 +31,18 @@ export default function LoginForm() {
         // Successfully logged in - check user role and redirect accordingly
         const userData = await getUserData();
 
-        if (userData?.role === "system_admin") {
-          // System admin - redirect to admin dashboard
+        // Check if user data exists
+        if (!userData) {
+          setError("Failed to load user data. Please try again or contact support.");
+          setLoading(false);
+          return;
+        }
+
+        if (userData.role === "system_admin") {
           router.push("/admin");
-        } else if (userData?.role === "cca_admin" && userData.cca_id) {
-          // CCA admin - redirect to their CCA edit page
-          router.push(`/ccas/${userData.cca_id}/edit`);
+        } else if (userData.role === "cca_admin" && userData.cca_id) {
+          router.push(`/cca-admin/${userData.cca_id}`);
         } else {
-          // Student - redirect to dashboard
           router.push("/dashboard");
         }
         router.refresh();
