@@ -15,7 +15,7 @@ export default function AdminDashboard() {
 
   // Constants for CCA form
   const categories = ["Sports", "Arts & Culture", "Community Service", "Academic", "Special Interest"];
-  const commitmentTypes = ["Schedule Based", "Flexible", "Event Based"];
+  const commitmentTypes = ["Schedule Based", "Event Based"];
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const sportTypes = ["Competitive", "Recreational", "Both"];
 
