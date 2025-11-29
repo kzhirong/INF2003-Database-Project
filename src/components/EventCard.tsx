@@ -45,9 +45,9 @@ export default function EventCard({
 
   return (
     <Link href={`/events/${id}`}>
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 h-full">
-        {/* Poster Image */}
-        <div className="relative h-48 bg-gray-100">
+      <div className="bg-white border border-gray-100 shadow-sm overflow-hidden flex flex-col sm:flex-row hover:shadow-md transition-shadow cursor-pointer">
+        {/* Image Section */}
+        <div className="w-full sm:w-[358px] h-[276px] bg-gray-100 flex items-center justify-center flex-shrink-0 relative">
           {poster_url ? (
             <Image
               src={poster_url}
@@ -95,20 +95,20 @@ export default function EventCard({
           )}
         </div>
 
-        {/* Content */}
-        <div className="p-4">
+        {/* Content Section */}
+        <div className="p-8 md:p-10 flex flex-col justify-center flex-grow">
           {/* CCA Name */}
-          <div className="text-xs font-semibold text-[#F44336] mb-2 uppercase">
+          <p className="text-[#F44336] text-sm md:text-base font-semibold mb-3 uppercase tracking-wide">
             {cca_name}
-          </div>
+          </p>
 
           {/* Title */}
-          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+          <h3 className="text-2xl md:text-3xl font-bold text-black mb-3 leading-tight">
             {title}
           </h3>
 
           {/* Date and Time */}
-          <div className="flex items-center text-sm text-gray-600 mb-2">
+          <div className="flex items-center text-sm md:text-base text-gray-600 mb-2">
             <svg
               className="w-4 h-4 mr-2 text-gray-400"
               fill="none"
@@ -125,7 +125,7 @@ export default function EventCard({
             <span className="font-medium">{dayOfWeek}, {formattedDate}</span>
           </div>
 
-          <div className="flex items-center text-sm text-gray-600 mb-2">
+          <div className="flex items-center text-sm md:text-base text-gray-600 mb-2">
             <svg
               className="w-4 h-4 mr-2 text-gray-400"
               fill="none"
@@ -143,7 +143,7 @@ export default function EventCard({
           </div>
 
           {/* Location */}
-          <div className="flex items-center text-sm text-gray-600 mb-3">
+          <div className="flex items-center text-sm md:text-base text-gray-600 mb-4">
             <svg
               className="w-4 h-4 mr-2 text-gray-400"
               fill="none"
@@ -163,13 +163,13 @@ export default function EventCard({
                 d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-            <span className="line-clamp-1">{location}</span>
+            <span>{location}</span>
           </div>
 
           {/* Registration Info */}
           {max_attendees && (
             <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm md:text-base text-gray-600">
                 <span className="font-semibold text-gray-900">
                   {current_registrations}
                 </span>{' '}
@@ -177,7 +177,7 @@ export default function EventCard({
               </div>
               {spots_remaining !== null && (
                 <div
-                  className={`text-xs font-semibold ${
+                  className={`text-xs md:text-sm font-semibold ${
                     spots_remaining === 0
                       ? 'text-red-600'
                       : spots_remaining <= 5

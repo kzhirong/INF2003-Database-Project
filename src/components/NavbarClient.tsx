@@ -146,10 +146,10 @@ export default function NavbarClient() {
                 HOME
               </a>
               <a
-                href="/news"
+                href="/events"
                 className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
               >
-                NEWS
+                EVENTS
               </a>
               <a
                 href="/ccas"

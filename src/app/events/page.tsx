@@ -166,7 +166,7 @@ export default function EventsPage() {
           </div>
         )}
 
-        {/* Events Grid */}
+        {/* Events List */}
         {!loading && (
           <>
             {/* Upcoming Events */}
@@ -175,7 +175,7 @@ export default function EventsPage() {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
                   Upcoming Events
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="flex flex-col gap-8">
                   {upcomingEvents.map((event) => (
                     <EventCard key={event.id} {...event} />
                   ))}
@@ -189,7 +189,7 @@ export default function EventsPage() {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
                   Past Events
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="flex flex-col gap-8">
                   {pastEvents.map((event) => (
                     <EventCard key={event.id} {...event} />
                   ))}
