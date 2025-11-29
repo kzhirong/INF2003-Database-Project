@@ -32,9 +32,14 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
   const [commitment, setCommitment] = useState("Schedule Based");
   const [sportType, setSportType] = useState("Competitive");
 
-  // Hero section
+  // Additional Information section
   const [heroImage, setHeroImage] = useState("");
+  const [profileImage, setProfileImage] = useState("");
   const [shortDescription, setShortDescription] = useState("");
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
 
   // Dynamic content blocks
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -93,6 +98,25 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         setCommitment(cca.commitment || "Schedule Based");
         setSportType(cca.sportType || "Competitive");
         setHeroImage(cca.heroImage || "");
+        setProfileImage(cca.profileImage || "");
+        console.log('=== IMAGE DEBUG ===');
+        console.log('Profile Image URL from DB:', cca.profileImage);
+        console.log('Profile Image URL type:', typeof cca.profileImage);
+        console.log('Profile Image URL length:', cca.profileImage?.length);
+        console.log('Hero Image URL from DB:', cca.heroImage);
+        console.log('Hero Image URL type:', typeof cca.heroImage);
+        console.log('Hero Image URL length:', cca.heroImage?.length);
+
+        // Only set preview if we have a non-empty string
+        const heroPreview = (cca.heroImage && typeof cca.heroImage === 'string' && cca.heroImage.trim() !== '') ? cca.heroImage : null;
+        const profilePreview = (cca.profileImage && typeof cca.profileImage === 'string' && cca.profileImage.trim() !== '') ? cca.profileImage : null;
+
+        console.log('Setting Hero Preview to:', heroPreview);
+        console.log('Setting Profile Preview to:', profilePreview);
+        console.log('=== END DEBUG ===');
+
+        setHeroImagePreview(heroPreview);
+        setProfileImagePreview(profilePreview);
         setShortDescription(cca.shortDescription || "");
         setBlocks(cca.blocks || []);
       } else {
@@ -132,11 +156,286 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
     );
   };
 
+  const handleHeroImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('File size exceeds 5MB limit');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Store file and create preview
+    setHeroImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setHeroImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveHeroImage = () => {
+    console.log('=== REMOVE HERO IMAGE CLICKED ===');
+    console.log('Before remove - heroImage state:', heroImage);
+    console.log('Before remove - heroImagePreview:', heroImagePreview);
+    console.log('Before remove - heroImageFile:', heroImageFile);
+
+    // Clear all hero image state - user wants to remove the image
+    setHeroImageFile(null);
+    setHeroImagePreview(null);
+    // Mark for deletion by setting to empty string (will be saved on "Save Changes")
+    setHeroImage("");
+
+    console.log('After remove - all hero image state cleared');
+  };
+
+  const handleProfileImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('File size exceeds 5MB limit');
+      setTimeout(() => setError(""), 5000);
+      return;
+    }
+
+    // Store file and create preview
+    setProfileImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveProfileImage = () => {
+    console.log('=== REMOVE PROFILE IMAGE CLICKED ===');
+    console.log('Before remove - profileImage state:', profileImage);
+    console.log('Before remove - profileImagePreview:', profileImagePreview);
+    console.log('Before remove - profileImageFile:', profileImageFile);
+
+    // Clear all profile image state - user wants to remove the image
+    setProfileImageFile(null);
+    setProfileImagePreview(null);
+    // Mark for deletion by setting to empty string (will be saved on "Save Changes")
+    setProfileImage("");
+
+    console.log('After remove - all profile image state cleared');
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
       setError("");
       setSuccess("");
+
+      // Fetch current CCA data from database to get original image URLs
+      // We need the database values, not the state values, because state may have been cleared
+      let originalHeroImageUrl = "";
+      let originalProfileImageUrl = "";
+      
+      try {
+        const response = await fetch(`/api/ccas/${resolvedParams.id}`);
+        const data = await response.json();
+        if (data.success) {
+          originalHeroImageUrl = data.data.heroImage || "";
+          originalProfileImageUrl = data.data.profileImage || "";
+          console.log('=== FETCHED ORIGINAL URLS FROM DATABASE ===');
+          console.log('Original hero image URL:', originalHeroImageUrl);
+          console.log('Original profile image URL:', originalProfileImageUrl);
+        }
+      } catch (fetchError) {
+        console.error('Error fetching original image URLs:', fetchError);
+        // Continue with save even if fetch fails
+      }
+
+
+      // Upload hero image if a new file is selected
+      let uploadedHeroImageUrl = heroImage;
+      if (heroImageFile) {
+        try {
+          console.log('=== HERO IMAGE UPLOAD (REPLACEMENT) ===');
+          console.log('Current heroImage state:', heroImage);
+          console.log('Original hero image from DB:', originalHeroImageUrl);
+
+          // Delete old hero image from storage if it exists (use originalHeroImageUrl from DB)
+          if (originalHeroImageUrl && originalHeroImageUrl.includes('supabase.co/storage')) {
+            try {
+              // Extract the file path from the URL
+              // Format: https://.../storage/v1/object/public/cca-assets/hero-images/filename.png
+              const urlParts = originalHeroImageUrl.split('/cca-assets/');
+              if (urlParts.length === 2) {
+                const oldFilePath = urlParts[1]; // e.g., "hero-images/1234567890-abc.png"
+
+                console.log('Deleting old hero image:', oldFilePath);
+                const deleteResponse = await fetch(`/api/upload?path=${encodeURIComponent(oldFilePath)}`, {
+                  method: 'DELETE'
+                });
+                const deleteResult = await deleteResponse.json();
+                console.log('Delete result:', deleteResult);
+
+                if (!deleteResult.success) {
+                  console.error('Failed to delete old hero image:', deleteResult.error);
+                }
+              }
+            } catch (deleteError) {
+              console.error('Error deleting old hero image:', deleteError);
+              // Continue with upload even if delete fails
+            }
+          }
+
+          const formData = new FormData();
+          formData.append('file', heroImageFile);
+          formData.append('folder', 'hero-images');
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          const uploadData = await uploadResponse.json();
+
+          if (uploadData.success) {
+            uploadedHeroImageUrl = uploadData.data.url;
+          } else {
+            setError(uploadData.error || 'Failed to upload hero image');
+            setSaving(false);
+            return;
+          }
+        } catch (uploadError: any) {
+          console.error('Error uploading hero image:', uploadError);
+          setError('Failed to upload hero image');
+          setSaving(false);
+          return;
+        }
+      } else if (heroImage === "" && originalHeroImageUrl && originalHeroImageUrl.includes('supabase.co/storage')) {
+        // Hero image is being removed without replacement
+        try {
+          console.log('=== HERO IMAGE REMOVAL (NO REPLACEMENT) ===');
+          console.log('Removing hero image:', originalHeroImageUrl);
+          
+          const urlParts = originalHeroImageUrl.split('/cca-assets/');
+          if (urlParts.length === 2) {
+            const oldFilePath = urlParts[1];
+            
+            console.log('Deleting hero image:', oldFilePath);
+            const deleteResponse = await fetch(`/api/upload?path=${encodeURIComponent(oldFilePath)}`, {
+              method: 'DELETE'
+            });
+            const deleteResult = await deleteResponse.json();
+            console.log('Delete result:', deleteResult);
+            
+            if (!deleteResult.success) {
+              console.error('Failed to delete hero image:', deleteResult.error);
+            }
+          }
+        } catch (deleteError) {
+          console.error('Error deleting hero image:', deleteError);
+          // Continue with save even if delete fails
+        }
+      }
+
+      // Upload profile image if a new file is selected
+      let uploadedProfileImageUrl = profileImage;
+      if (profileImageFile) {
+        try {
+          // Delete old profile image from storage if it exists (use originalProfileImageUrl from DB)
+          if (originalProfileImageUrl && originalProfileImageUrl.includes('supabase.co/storage')) {
+            try {
+              // Extract the file path from the URL
+              // Format: https://.../storage/v1/object/public/cca-assets/profile-images/filename.png
+              const urlParts = originalProfileImageUrl.split('/cca-assets/');
+              if (urlParts.length === 2) {
+                const oldFilePath = urlParts[1]; // e.g., "profile-images/1234567890-abc.png"
+
+                console.log('Deleting old profile image:', oldFilePath);
+                const deleteResponse = await fetch(`/api/upload?path=${encodeURIComponent(oldFilePath)}`, {
+                  method: 'DELETE'
+                });
+                const deleteResult = await deleteResponse.json();
+                console.log('Delete result:', deleteResult);
+
+                if (!deleteResult.success) {
+                  console.error('Failed to delete old profile image:', deleteResult.error);
+                }
+              }
+            } catch (deleteError) {
+              console.error('Error deleting old profile image:', deleteError);
+              // Continue with upload even if delete fails
+            }
+          }
+
+          const formData = new FormData();
+          formData.append('file', profileImageFile);
+          formData.append('folder', 'profile-images');
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          const uploadData = await uploadResponse.json();
+
+          if (uploadData.success) {
+            uploadedProfileImageUrl = uploadData.data.url;
+          } else {
+            setError(uploadData.error || 'Failed to upload profile image');
+            setSaving(false);
+            return;
+          }
+        } catch (uploadError: any) {
+          console.error('Error uploading profile image:', uploadError);
+          setError('Failed to upload profile image');
+          setSaving(false);
+          return;
+        }
+      } else if (profileImage === "" && originalProfileImageUrl && originalProfileImageUrl.includes('supabase.co/storage')) {
+        // Profile image is being removed without replacement
+        try {
+          console.log('=== PROFILE IMAGE REMOVAL (NO REPLACEMENT) ===');
+          console.log('Removing profile image:', originalProfileImageUrl);
+          
+          const urlParts = originalProfileImageUrl.split('/cca-assets/');
+          if (urlParts.length === 2) {
+            const oldFilePath = urlParts[1];
+            
+            console.log('Deleting profile image:', oldFilePath);
+            const deleteResponse = await fetch(`/api/upload?path=${encodeURIComponent(oldFilePath)}`, {
+              method: 'DELETE'
+            });
+            const deleteResult = await deleteResponse.json();
+            console.log('Delete result:', deleteResult);
+            
+            if (!deleteResult.success) {
+              console.error('Failed to delete profile image:', deleteResult.error);
+            }
+          }
+        } catch (deleteError) {
+          console.error('Error deleting profile image:', deleteError);
+          // Continue with save even if delete fails
+        }
+      }
 
       // Validation: Check if Schedule Based is selected but no days are chosen
       if (commitment === "Schedule Based" && schedule.length === 0) {
@@ -185,7 +484,8 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
       // Build the CCA data object
       const ccaData: any = {
         _id: resolvedParams.id,
-        heroImage,
+        heroImage: uploadedHeroImageUrl,
+        profileImage: uploadedProfileImageUrl,
         shortDescription,
         blocks
       };
@@ -231,6 +531,28 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
 
       if (data.success) {
         setSuccess("Changes saved successfully!");
+
+        // Clear the file state and update heroImage with the uploaded URL
+        if (heroImageFile) {
+          console.log('=== UPDATING HERO STATE ===');
+          console.log('Setting heroImage to:', uploadedHeroImageUrl);
+          setHeroImage(uploadedHeroImageUrl);
+          setHeroImageFile(null);
+          setHeroImagePreview(uploadedHeroImageUrl);
+        }
+
+        // Clear the file state and update profileImage with the uploaded URL
+        if (profileImageFile) {
+          console.log('=== AFTER SAVE ===');
+          console.log('Uploaded Profile Image URL:', uploadedProfileImageUrl);
+          console.log('URL type:', typeof uploadedProfileImageUrl);
+          console.log('URL length:', uploadedProfileImageUrl?.length);
+          setProfileImage(uploadedProfileImageUrl);
+          setProfileImageFile(null);
+          setProfileImagePreview(uploadedProfileImageUrl);
+          console.log('Profile preview state updated to:', uploadedProfileImageUrl);
+        }
+
         // Scroll to top to show success message
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -320,16 +642,98 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
             <div className="flex items-center justify-between gap-6">
               {/* Left: Profile Picture and User Info */}
               <div className="flex items-center gap-6">
-                {/* Profile Picture - Placeholder with CCA initials */}
-                <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 flex-shrink-0">
-                  {(() => {
-                    const ccaName = originalName || 'CCA';
-                    const names = ccaName.trim().split(' ');
-                    if (names.length >= 2) {
-                      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-                    }
-                    return ccaName.substring(0, 2).toUpperCase();
-                  })()}
+                {/* Profile Picture - Clickable to upload */}
+                <div className="relative group flex-shrink-0 bg-transparent">
+                  <input
+                    type="file"
+                    id="profile-image-upload"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleProfileImageSelect}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="profile-image-upload"
+                    className="block cursor-pointer relative bg-transparent"
+                  >
+                    {profileImagePreview ? (
+                      <div className="w-24 h-24 rounded-full overflow-hidden relative border-2 border-gray-300 bg-white flex items-center justify-center">
+                        <img
+                          src={profileImagePreview}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          style={{ objectPosition: 'center center' }}
+                          onError={(e) => {
+                            console.error('Failed to load profile image:', profileImagePreview);
+                            // On error, clear the preview to show initials instead
+                            setProfileImagePreview(null);
+                          }}
+                        />
+                        {/* Hover overlay - positioned absolutely OVER the image */}
+                        <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-50 transition-opacity flex items-center justify-center rounded-full">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center z-10">
+                              <svg
+                                className="w-8 h-8 text-white mx-auto mb-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                              <span className="text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Change</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 border-2 border-gray-300 relative">
+                        {(() => {
+                          const ccaName = originalName || 'CCA';
+                          const names = ccaName.trim().split(' ');
+                          if (names.length >= 2) {
+                            return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+                          }
+                          return ccaName.substring(0, 2).toUpperCase();
+                        })()}
+                        {/* Hover overlay with camera icon */}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all rounded-full flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity text-center">
+                            <svg
+                              className="w-8 h-8 text-white mx-auto mb-1"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                            <span className="text-white text-[10px] font-medium">Upload</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </label>
                 </div>
 
                 {/* User Info */}
@@ -587,41 +991,92 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
               </div>
             </div>
 
-            {/* Hero Section */}
+            {/* Additional Information Section */}
             <div className="bg-white rounded-lg shadow-sm p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b-2 border-[#F44336]">
-                Hero Section
+                Additional Information
               </h2>
-              <p className="text-sm text-gray-500 mb-6">
-                This appears at the top of your CCA page
-              </p>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Hero Banner Upload */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Hero Image URL
+                    Hero Banner
                   </label>
-                  <input
-                    type="text"
-                    value={heroImage}
-                    onChange={(e) => setHeroImage(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    placeholder="/uploads/basketball-hero.jpg"
-                  />
-                  <p className="text-sm text-gray-500 mt-2">Recommended size: 1200x400px</p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Recommended ratio: 3:1 (e.g., 1200x400px) • Max file size: 5MB • Formats: JPEG, PNG, GIF, WebP
+                  </p>
+
+                  {heroImagePreview ? (
+                    <div className="space-y-3">
+                      {/* Image Preview - 3:1 aspect ratio */}
+                      <div className="relative w-full aspect-[3/1] border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <img
+                          src={heroImagePreview}
+                          alt="Hero banner preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Remove Button */}
+                      <button
+                        type="button"
+                        onClick={handleRemoveHeroImage}
+                        className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                      >
+                        Remove Image
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="file"
+                        id="hero-image-upload"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        onChange={handleHeroImageSelect}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="hero-image-upload"
+                        className="flex flex-col items-center justify-center w-full aspect-[3/1] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#F44336] hover:bg-gray-50 transition-colors"
+                      >
+                        <svg
+                          className="w-12 h-12 text-gray-400 mb-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                        <p className="text-sm text-gray-600 mb-1">
+                          <span className="font-semibold text-[#F44336]">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">JPEG, PNG, GIF or WebP (max 5MB)</p>
+                      </label>
+                    </div>
+                  )}
                 </div>
 
+                {/* About Us */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Short Description
+                    About Us
                   </label>
                   <textarea
                     value={shortDescription}
                     onChange={(e) => setShortDescription(e.target.value)}
-                    rows={2}
+                    rows={3}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                    placeholder="Brief description shown on hero section"
+                    placeholder="Write a brief description about the CCA"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This will be displayed prominently on your CCA page
+                  </p>
                 </div>
               </div>
             </div>
@@ -644,7 +1099,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className={`w-full px-8 py-4 rounded-lg font-semibold text-lg transition-colors ${
+                className={`w-full px-8 py-4 rounded-lg font-semibold text-lg transition-colors cursor-pointer ${
                   saving
                     ? "bg-gray-400 text-white cursor-not-allowed"
                     : "bg-[#F44336] text-white hover:bg-[#D32F2F]"
