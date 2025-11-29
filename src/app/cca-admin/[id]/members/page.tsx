@@ -8,18 +8,16 @@ interface CCAData {
   _id: string;
   name: string;
   category: string;
-  stats?: {
-    currentMembers: number;
-    maxMembers: number;
-  };
 }
 
 interface Member {
-  id: string;
+  enrollment_id: string;
+  user_id: string;
   name: string;
   student_id: string;
-  year_of_study: number;
-  course: string;
+  course_name: string;
+  phone_number: string;
+  created_at: string;
 }
 
 export default function CCAAdminMembers({ params }: { params: Promise<{ id: string }> }) {
@@ -31,25 +29,32 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
   const [userEmail, setUserEmail] = useState(""); // Store actual user email from Supabase
   const [studentId, setStudentId] = useState("");
   const [addingMember, setAddingMember] = useState(false);
-
-  // Placeholder data for members
-  const [members] = useState<Member[]>([
-    { id: "1", name: "James Wong Wen Jun", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "2", name: "James Lim Kai Xian", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "3", name: "James Sim Jun Kai", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "4", name: "James Kim", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "5", name: "James Lee", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "6", name: "John Wong", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "7", name: "John Wong", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "8", name: "Sam Wang", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "9", name: "Zac Lim", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-    { id: "10", name: "Zhong Wen Xian", student_id: "2402478", year_of_study: 1, course: "Applied Computing" },
-  ]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [stats, setStats] = useState({ totalMembers: 0, activeMembers: 0 });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     fetchUserEmail();
     fetchCCAData();
+    fetchMembers();
   }, [resolvedParams.id]);
+
+  // Auto-dismiss error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  // Auto-dismiss success after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   const fetchUserEmail = async () => {
     try {
@@ -74,34 +79,91 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
       if (data.success) {
         setCcaData(data.data);
       } else {
-        alert("Failed to load CCA data");
+        setError('Failed to load CCA data');
         router.push("/");
       }
     } catch (error) {
       console.error("Error fetching CCA:", error);
+      setError('An error occurred while loading CCA data');
       router.push("/");
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchMembers = async () => {
+    try {
+      const response = await fetch(`/api/cca-admin/${resolvedParams.id}/members`);
+      const data = await response.json();
+
+      if (data.success) {
+        setMembers(data.data);
+        setStats(data.stats);
+      } else {
+        setError('Failed to load members');
+      }
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      setError('An error occurred while loading members');
+    }
+  };
+
   const handleAddMember = async () => {
     if (!studentId.trim()) {
-      alert("Please enter a student ID");
+      setError('Please enter a student ID');
+      return;
+    }
+
+    // Validate format (7 digits)
+    if (!/^\d{7}$/.test(studentId.trim())) {
+      setError('Student ID must be exactly 7 digits');
       return;
     }
 
     setAddingMember(true);
-    // TODO: Implement actual API call to add member
-    alert(`Adding student with ID: ${studentId}`);
-    setStudentId("");
-    setAddingMember(false);
+    try {
+      const response = await fetch(`/api/cca-admin/${resolvedParams.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId.trim() })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setStudentId("");
+        fetchMembers(); // Refresh list
+        setSuccess('Member added successfully!');
+      } else {
+        setError(data.error || 'Failed to add member');
+      }
+    } catch (error) {
+      console.error('Error adding member:', error);
+      setError('An error occurred. Please try again.');
+    } finally {
+      setAddingMember(false);
+    }
   };
 
-  const handleRemoveMember = async (memberId: string, memberName: string) => {
-    if (confirm(`Are you sure you want to remove ${memberName} from the CCA?`)) {
-      // TODO: Implement actual API call to remove member
-      alert(`Removing member: ${memberName}`);
+  const handleRemoveMember = async (userId: string, memberName: string) => {
+    if (!confirm(`Are you sure you want to remove ${memberName} from the CCA?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/cca-admin/${resolvedParams.id}/members/${userId}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        fetchMembers(); // Refresh list
+        setSuccess(`${memberName} removed successfully`);
+      } else {
+        setError(data.error || 'Failed to remove member');
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
+      setError('An error occurred. Please try again.');
     }
   };
 
@@ -174,6 +236,18 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
 
         {/* Members Content */}
         <div className="px-4 sm:px-8 md:px-16 lg:px-24">
+          {/* Success/Error Messages */}
+          {error && (
+            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+              {success}
+            </div>
+          )}
+
           {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Add Members and Member List */}
@@ -189,12 +263,12 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
                     placeholder="Enter Student ID"
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-base text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                   />
                   <button
                     onClick={handleAddMember}
                     disabled={addingMember}
-                    className="px-8 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#d32f2f] transition-colors disabled:opacity-50"
+                    className="px-6 py-2 text-base bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#d32f2f] transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {addingMember ? "Adding..." : "Add"}
                   </button>
@@ -212,23 +286,21 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
                     <thead>
                       <tr className="border-b border-gray-200">
                         <th className="text-left py-3 px-2 font-semibold text-gray-700">Name</th>
-                        <th className="text-left py-3 px-2 font-semibold text-gray-700">ID</th>
-                        <th className="text-left py-3 px-2 font-semibold text-gray-700">Year</th>
+                        <th className="text-left py-3 px-2 font-semibold text-gray-700">Student ID</th>
                         <th className="text-left py-3 px-2 font-semibold text-gray-700">Course</th>
                         <th className="text-left py-3 px-2"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {members.map((member) => (
-                        <tr key={member.id} className="border-b border-gray-100">
+                        <tr key={member.enrollment_id} className="border-b border-gray-100">
                           <td className="py-3 px-2 text-gray-900">{member.name}</td>
                           <td className="py-3 px-2 text-gray-600">{member.student_id}</td>
-                          <td className="py-3 px-2 text-gray-600">Year {member.year_of_study}</td>
-                          <td className="py-3 px-2 text-gray-600">{member.course}</td>
+                          <td className="py-3 px-2 text-gray-600">{member.course_name}</td>
                           <td className="py-3 px-2">
                             <button
-                              onClick={() => handleRemoveMember(member.id, member.name)}
-                              className="px-4 py-1 bg-[#F44336] text-white text-sm font-semibold rounded hover:bg-[#d32f2f] transition-colors"
+                              onClick={() => handleRemoveMember(member.user_id, member.name)}
+                              className="px-4 py-1 bg-[#F44336] text-white text-sm font-semibold rounded hover:bg-[#d32f2f] transition-colors cursor-pointer"
                             >
                               Remove
                             </button>
@@ -247,19 +319,19 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
 
             {/* Right Column - Stats */}
             <div className="space-y-6">
-              {/* Active Members Section */}
+              {/* Quick Stats Section */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl md:text-2xl font-bold text-black mb-6">
-                  Active Members
+                  Quick Stats
                 </h2>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#F5F5F5] p-4 rounded-lg">
                     <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                      {members.length || 89}
+                      {stats.totalMembers}
                     </div>
                     <div className="text-sm text-gray-600">
-                      Active CCA's
+                      Total Members
                     </div>
                   </div>
 

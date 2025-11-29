@@ -10,10 +10,6 @@ interface CCAData {
   _id: string;
   name: string;
   category: string;
-  stats?: {
-    currentMembers: number;
-    maxMembers: number;
-  };
 }
 
 export default function CCAAdminDashboard({ params }: { params: Promise<{ id: string }> }) {
@@ -26,6 +22,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
   const [memberCount, setMemberCount] = useState(0);
+  const [stats, setStats] = useState({ totalMembers: 0, activeMembers: 0 });
 
   useEffect(() => {
     fetchUserEmail();
@@ -33,6 +30,7 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
     fetchEvents();
     fetchSessions();
     fetchMembers();
+    fetchStats();
   }, [resolvedParams.id]);
 
   const fetchUserEmail = async () => {
@@ -40,12 +38,25 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user?.email) {
         setUserEmail(user.email);
       }
     } catch (error) {
       console.error("Error fetching user email:", error);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`/api/cca-admin/${resolvedParams.id}/members`);
+      const data = await response.json();
+
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -266,16 +277,16 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
 
             {/* Right Column - Stats */}
             <div className="space-y-6">
-              {/* At a Glance Section */}
+              {/* Quick Stats Section */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl md:text-2xl font-bold text-black mb-6">
-                  At a Glance
+                  Quick Stats
                 </h2>
 
                 <div className="space-y-4">
                   <div className="bg-[#F5F5F5] p-4 rounded-lg">
                     <div className="text-3xl md:text-4xl font-bold text-black mb-1">
-                      {memberCount}
+                      {stats.totalMembers}
                     </div>
                     <div className="text-sm text-gray-600">
                       Active Members

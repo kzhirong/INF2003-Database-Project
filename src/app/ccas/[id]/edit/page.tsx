@@ -110,7 +110,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const categories = ["Sports", "Arts & Culture", "Academic", "Community Service", "Special Interest"];
-  const commitmentTypes = ["Schedule Based", "Flexible", "Event Based"];
+  const commitmentTypes = ["Schedule Based", "Event Based"];
   const sportTypes = ["Competitive", "Recreational", "Both"];
 
   const handleScheduleToggle = (day: string) => {

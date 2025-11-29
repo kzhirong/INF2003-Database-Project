@@ -9,7 +9,7 @@ import { getUserData } from "@/lib/auth";
 
 export default function CCADetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [memberCount, setMemberCount] = useState<number>(0);
   const [ccaData, setCCAData] = useState<CCAPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +18,7 @@ export default function CCADetail({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     fetchCCAData();
     checkEditPermission();
+    fetchMemberCount();
   }, [resolvedParams.id]);
 
   const fetchCCAData = async () => {
@@ -47,6 +48,19 @@ export default function CCADetail({ params }: { params: Promise<{ id: string }> 
       }
     } catch (err) {
       console.error('Error checking edit permission:', err);
+    }
+  };
+
+  const fetchMemberCount = async () => {
+    try {
+      const response = await fetch(`/api/ccas/${resolvedParams.id}/member-count`);
+      const data = await response.json();
+
+      if (data.success) {
+        setMemberCount(data.count);
+      }
+    } catch (err) {
+      console.error('Error fetching member count:', err);
     }
   };
 
@@ -81,10 +95,6 @@ export default function CCADetail({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  const handleEnroll = () => {
-    setIsEnrolled(!isEnrolled);
-    // TODO: API call to enroll/unenroll
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -172,18 +182,19 @@ export default function CCADetail({ params }: { params: Promise<{ id: string }> 
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm p-6 sticky top-4">
-              {/* Enrollment Status */}
-              <div className="mb-6">
-                <button
-                  onClick={handleEnroll}
-                  className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
-                    isEnrolled
-                      ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      : "bg-[#F44336] text-white hover:bg-[#D32F2F]"
-                  }`}
-                >
-                  {isEnrolled ? "✓ Enrolled" : "Join CCA"}
-                </button>
+              {/* Member Count */}
+              <div className="mb-6 bg-gray-50 rounded-lg p-4">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-[#F44336] mb-1">
+                    {memberCount}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {memberCount === 1 ? 'Active Member' : 'Active Members'}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Contact CCA admin to join
+                  </div>
+                </div>
               </div>
 
               {/* Schedule */}
