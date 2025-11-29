@@ -366,65 +366,80 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
                     Schedule *
                   </label>
                   <div className="space-y-4">
-                    {daysOfWeek.map((day) => {
-                      const session = schedule.find(s => s.day === day);
-                      const isSelected = !!session;
-
-                      return (
-                        <div key={day} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center mb-3">
-                            <input
-                              type="checkbox"
-                              id={`day-${day}`}
-                              checked={isSelected}
-                              onChange={() => handleScheduleToggle(day)}
-                              className="w-4 h-4 text-[#F44336] border-gray-300 rounded focus:ring-[#F44336] cursor-pointer"
-                            />
-                            <label htmlFor={`day-${day}`} className="ml-2 font-medium text-gray-900 cursor-pointer">
+                    <div className="space-y-4">
+                      {/* Day Selection Buttons */}
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {daysOfWeek.map((day) => {
+                          const isSelected = schedule.some(s => s.day === day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => handleScheduleToggle(day)}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#F44336] text-white border-[#F44336]'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
                               {day}
-                            </label>
-                          </div>
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                          {isSelected && (
-                            <div className="ml-6 space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    Start Time *
-                                  </label>
-                                  <TimePicker
-                                    value={session?.startTime || ''}
-                                    onChange={(val) => updateScheduleSession(day, 'startTime', val)}
-                                  />
+                      {/* Selected Days Forms */}
+                      <div className="space-y-4">
+                        {daysOfWeek.map((day) => {
+                          const session = schedule.find(s => s.day === day);
+                          if (!session) return null;
+
+                          return (
+                            <div key={day} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                              <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-[#F44336] rounded-full"></span>
+                                {day}
+                              </h4>
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      Start Time *
+                                    </label>
+                                    <TimePicker
+                                      value={session.startTime}
+                                      onChange={(val) => updateScheduleSession(day, 'startTime', val)}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      End Time *
+                                    </label>
+                                    <TimePicker
+                                      value={session.endTime}
+                                      onChange={(val) => updateScheduleSession(day, 'endTime', val)}
+                                    />
+                                  </div>
                                 </div>
                                 <div>
                                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    End Time *
+                                    Location *
                                   </label>
-                                  <TimePicker
-                                    value={session?.endTime || ''}
-                                    onChange={(val) => updateScheduleSession(day, 'endTime', val)}
+                                  <input
+                                    type="text"
+                                    value={session.location}
+                                    onChange={(e) => updateScheduleSession(day, 'location', e.target.value)}
+                                    placeholder="e.g., Sports Hall, Level 1"
+                                    required
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                                   />
                                 </div>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">
-                                  Location *
-                                </label>
-                                <input
-                                  type="text"
-                                  value={session?.location || ''}
-                                  onChange={(e) => updateScheduleSession(day, 'location', e.target.value)}
-                                  placeholder="e.g., Sports Hall, Level 1"
-                                  required
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                                />
                               </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

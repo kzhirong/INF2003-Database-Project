@@ -186,13 +186,13 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
       if (userRole === 'system_admin') {
         ccaData.name = name;
         ccaData.category = category;
+      }
 
-        // Only include sportType for Sports category, otherwise set to null to clear it
-        if (category === "Sports") {
-          ccaData.sportType = sportType;
-        } else {
-          ccaData.sportType = null;
-        }
+      // Sport Type (Editable by both System Admin and CCA Admin if category is Sports)
+      if (category === "Sports") {
+        ccaData.sportType = sportType;
+      } else {
+        ccaData.sportType = null;
       }
 
       // Commitment and Schedule (Editable by both System Admin and CCA Admin)
@@ -352,6 +352,14 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         </div>
 
         <div className="px-4 sm:px-8 md:px-16 lg:px-24">
+          {/* Page Header for CCA Admin */}
+          {userRole !== 'system_admin' && (
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900">Manage CCA</h1>
+              <p className="text-gray-600 mt-1">Customize how students view your CCA page and manage your schedule</p>
+            </div>
+          )}
+
           {/* Success/Error Messages */}
           {error && (
             <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -452,40 +460,22 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
 
                 {/* Sport Type (conditional - directly under Category since they're related) */}
                 {category === "Sports" && (
-                  userRole === 'cca_admin' ? (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Sport Type *
-                      </label>
-                      <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 flex items-center justify-between">
-                        <span>{sportType}</span>
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-                          </svg>
-                          Read-only
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Contact System Admin to change</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Sport Type *
-                      </label>
-                      <select
-                        value={sportType}
-                        onChange={(e) => setSportType(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
-                      >
-                        {sportTypes.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Sport Type *
+                    </label>
+                    <select
+                      value={sportType}
+                      onChange={(e) => setSportType(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                    >
+                      {sportTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
 
                 {/* Commitment Type */}
@@ -520,34 +510,47 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                       Schedule *
                     </label>
                     <div className="space-y-4">
-                      {daysOfWeek.map((day) => {
-                        const session = schedule.find(s => s.day === day);
-                        const isSelected = !!session;
+                      {/* Day Selection Buttons */}
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {daysOfWeek.map((day) => {
+                          const isSelected = schedule.some(s => s.day === day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => handleScheduleToggle(day)}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#F44336] text-white border-[#F44336]'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                        return (
-                          <div key={day} className="border border-gray-200 rounded-lg p-4">
-                            <div className="flex items-center mb-3">
-                              <input
-                                type="checkbox"
-                                id={`day-${day}`}
-                                checked={isSelected}
-                                onChange={() => handleScheduleToggle(day)}
-                                className="w-4 h-4 text-[#F44336] border-gray-300 rounded focus:ring-[#F44336] cursor-pointer"
-                              />
-                              <label htmlFor={`day-${day}`} className="ml-2 font-medium text-gray-900 cursor-pointer">
+                      {/* Selected Days Forms */}
+                      <div className="space-y-4">
+                        {daysOfWeek.map((day) => {
+                          const session = schedule.find(s => s.day === day);
+                          if (!session) return null;
+
+                          return (
+                            <div key={day} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                              <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-[#F44336] rounded-full"></span>
                                 {day}
-                              </label>
-                            </div>
-
-                            {isSelected && (
-                              <div className="ml-6 space-y-4">
+                              </h4>
+                              <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div>
                                     <label className="block text-xs font-medium text-gray-700 mb-1">
                                       Start Time *
                                     </label>
                                     <TimePicker
-                                      value={session?.startTime || ''}
+                                      value={session.startTime}
                                       onChange={(val) => updateScheduleSession(day, 'startTime', val)}
                                     />
                                   </div>
@@ -556,7 +559,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                                       End Time *
                                     </label>
                                     <TimePicker
-                                      value={session?.endTime || ''}
+                                      value={session.endTime}
                                       onChange={(val) => updateScheduleSession(day, 'endTime', val)}
                                     />
                                   </div>
@@ -567,18 +570,18 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                                   </label>
                                   <input
                                     type="text"
-                                    value={session?.location || ''}
+                                    value={session.location}
                                     onChange={(e) => updateScheduleSession(day, 'location', e.target.value)}
                                     placeholder="e.g., Sports Hall, Level 1"
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F44336] focus:border-transparent"
                                   />
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
