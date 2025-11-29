@@ -146,10 +146,10 @@ export default function NavbarClient() {
                 HOME
               </a>
               <a
-                href="/news"
+                href="/events"
                 className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
               >
-                NEWS
+                EVENTS
               </a>
               <a
                 href="/ccas"
@@ -157,6 +157,30 @@ export default function NavbarClient() {
               >
                 CCAS
               </a>
+            </div>
+          )}
+
+          {/* CCA Admin Navigation */}
+          {userData?.role === "cca_admin" && userData.cca_id && (
+            <div className="hidden md:flex items-center space-x-6 mr-4">
+              <Link
+                href={`/cca-admin/${userData.cca_id}`}
+                className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
+              >
+                OVERVIEW
+              </Link>
+              <Link
+                href={`/cca-admin/${userData.cca_id}/members`}
+                className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
+              >
+                MY MEMBERS
+              </Link>
+              <Link
+                href={`/ccas/${userData.cca_id}/edit`}
+                className="text-[#000] hover:text-[#F44336] transition-colors duration-200 font-bold font-raleway"
+              >
+                MANAGE PAGE
+              </Link>
             </div>
           )}
 

@@ -268,22 +268,10 @@ export default function CCAAdminSessionsPage({
                     e.stopPropagation();
                     handleDelete(session.id);
                   }}
-                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  className="absolute top-2 right-2 px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded hover:bg-red-600 transition-colors z-10"
                   title="Delete session"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  Delete
                 </button>
               </div>
             ))}

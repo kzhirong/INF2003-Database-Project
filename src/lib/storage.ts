@@ -18,7 +18,8 @@ export interface UploadResult {
  */
 export async function uploadEventPoster(
   file: File,
-  eventId?: string
+  eventId?: string,
+  supabaseClient?: any
 ): Promise<UploadResult> {
   // Validate file type
   if (!ALLOWED_TYPES.includes(file.type)) {
@@ -38,7 +39,7 @@ export async function uploadEventPoster(
     };
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   // Generate file path
   const fileExt = file.name.split('.').pop();

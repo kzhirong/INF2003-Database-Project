@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload to storage
-    const result = await uploadEventPoster(file);
+    const result = await uploadEventPoster(file, undefined, supabase);
 
-    if (!result.success) {
+    if (result.error) {
       return NextResponse.json(
         { success: false, error: result.error },
         { status: 400 }

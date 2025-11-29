@@ -30,12 +30,19 @@ export async function GET(
     await connectDB();
     const cca = await CCA.findById(event.cca_id).lean();
 
-    // Get registration summary
-    const { data: regSummary } = await supabase
-      .from('event_registration_summary')
-      .select('*')
-      .eq('id', event.id)
-      .single();
+    // Get registration count directly from attendance table
+    const { count: currentRegistrations } = await supabase
+      .from('attendance')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', event.id);
+
+    // Calculate spots remaining and is_full
+    const spotsRemaining = event.max_attendees 
+      ? event.max_attendees - (currentRegistrations || 0)
+      : null;
+    const isFull = event.max_attendees 
+      ? (currentRegistrations || 0) >= event.max_attendees
+      : false;
 
     // Check if current user is registered
     const {
@@ -55,9 +62,9 @@ export async function GET(
     const enrichedEvent = {
       ...event,
       cca_name: cca?.name || 'Unknown CCA',
-      current_registrations: regSummary?.current_registrations || 0,
-      spots_remaining: regSummary?.spots_remaining,
-      is_full: regSummary?.is_full || false,
+      current_registrations: currentRegistrations || 0,
+      spots_remaining: spotsRemaining,
+      is_full: isFull,
       is_registered: isRegistered,
     };
 

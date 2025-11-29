@@ -343,25 +343,8 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                 </div>
               </div>
 
-              {/* Right: Tab Navigation Buttons */}
+              {/* Right: Tab Navigation Buttons - Moved to Navbar */}
               <div className="hidden md:flex items-center gap-4">
-                <button
-                  onClick={() => router.push(`/cca-admin/${resolvedParams.id}`)}
-                  className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Overview
-                </button>
-                <button
-                  onClick={() => router.push(`/cca-admin/${resolvedParams.id}/members`)}
-                  className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  My Members
-                </button>
-                <button
-                  className="px-6 py-2 text-base font-semibold text-white bg-[#F44336] rounded-lg transition-colors cursor-pointer"
-                >
-                  Manage
-                </button>
               </div>
             </div>
           )}

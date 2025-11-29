@@ -34,81 +34,56 @@ export async function GET(
       );
     }
 
-    // Use RPC or raw query to join tables properly
-    const { data: members, error: membersError } = await supabase.rpc('get_cca_members', {
-      p_cca_id: ccaId
-    });
+    // Fetch members directly from cca_membership table
+    const { data: members, error: membersError } = await supabase
+      .from('cca_membership')
+      .select('id, user_id, created_at')
+      .eq('cca_id', ccaId);
 
     if (membersError) {
       console.error('Error fetching members:', membersError);
-
-      // Fallback to simple query if RPC doesn't exist
-      const { data: fallbackMembers, error: fallbackError } = await supabase
-        .from('cca_membership')
-        .select('id, user_id, created_at')
-        .eq('cca_id', ccaId);
-
-      if (fallbackError) {
-        return NextResponse.json(
-          { success: false, error: 'Failed to fetch members' },
-          { status: 500 }
-        );
-      }
-
-      // Fetch student details for each member
-      const transformedMembers = await Promise.all(
-        (fallbackMembers || []).map(async (m: any) => {
-          const { data: studentData } = await supabase
-            .from('student_details')
-            .select('student_id, name, phone_number, course_id')
-            .eq('user_id', m.user_id)
-            .single();
-
-          const { data: courseData } = studentData?.course_id
-            ? await supabase
-                .from('courses')
-                .select('course_name')
-                .eq('id', studentData.course_id)
-                .single()
-            : { data: null };
-
-          return {
-            enrollment_id: m.id,
-            user_id: m.user_id,
-            student_id: studentData?.student_id || 'Unknown',
-            name: studentData?.name || 'Unknown',
-            phone_number: studentData?.phone_number || '',
-            course_name: courseData?.course_name || 'Unknown',
-            created_at: m.created_at
-          };
-        })
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch members' },
+        { status: 500 }
       );
-
-      const totalMembers = transformedMembers.length;
-      return NextResponse.json({
-        success: true,
-        data: transformedMembers.sort((a, b) => a.name.localeCompare(b.name)),
-        stats: {
-          totalMembers,
-          activeMembers: totalMembers
-        }
-      });
     }
 
-    // If RPC succeeded, use that data
-    const transformedMembers = (members || []).sort((a: any, b: any) =>
-      a.name.localeCompare(b.name)
+    // Fetch student details for each member
+    const transformedMembers = await Promise.all(
+      (members || []).map(async (m: any) => {
+        const { data: studentData } = await supabase
+          .from('student_details')
+          .select('student_id, name, phone_number, course_id')
+          .eq('user_id', m.user_id)
+          .single();
+
+        const { data: courseData } = studentData?.course_id
+          ? await supabase
+              .from('courses')
+              .select('course_name')
+              .eq('id', studentData.course_id)
+              .single()
+          : { data: null };
+
+        return {
+          enrollment_id: m.id,
+          user_id: m.user_id,
+          student_id: studentData?.student_id || 'Unknown',
+          name: studentData?.name || 'Unknown',
+          phone_number: studentData?.phone_number || '',
+          course_name: courseData?.course_name || 'Unknown',
+          created_at: m.created_at
+        };
+      })
     );
 
-    // Calculate stats
     const totalMembers = transformedMembers.length;
-
     return NextResponse.json({
       success: true,
-      data: transformedMembers,
+      data: transformedMembers.sort((a, b) => a.name.localeCompare(b.name)),
       stats: {
         totalMembers,
-        activeMembers: totalMembers // All members are active (no status field)
+        activeMembers: totalMembers
       }
     });
 

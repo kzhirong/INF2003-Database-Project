@@ -61,45 +61,45 @@ export async function GET(
 
     if (error) throw error;
 
-    // Fetch student details from users and student_details tables
-    const enrichedAttendance = await Promise.all(
-      (attendanceRecords || []).map(async (record: any) => {
-        const { data: userData } = await supabase
-          .from('users')
-          .select(`
-            id,
-            email,
-            student_details:student_details(name, student_id, phone_number)
-          `)
-          .eq('id', record.user_id)
-          .single();
+    // Get all user IDs
+    const userIds = (attendanceRecords || []).map((r: any) => r.user_id);
 
-        const studentDetails = (userData?.student_details as any)?.[0];
+    // Fetch student details directly
+    const { data: students } = await supabase
+      .from('student_details')
+      .select('user_id, name, student_id, phone_number')
+      .in('user_id', userIds);
 
-        return {
-          id: record.id,
-          user_id: record.user_id,
-          attended: record.attended,
-          marked_by: record.marked_by,
-          marked_at: record.marked_at,
-          student: studentDetails
-            ? {
-                id: record.user_id,
-                name: studentDetails.name || "Unknown",
-                student_id: studentDetails.student_id || "N/A",
-                email: userData?.email || "",
-                phone_number: studentDetails.phone_number || null,
-              }
-            : {
-                id: record.user_id,
-                name: "Unknown",
-                student_id: "N/A",
-                email: userData?.email || "",
-                phone_number: null,
-              },
-        };
-      })
-    );
+    // Fetch user emails
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, email')
+      .in('id', userIds);
+
+    // Create maps for easy lookup
+    const studentMap = new Map(students?.map((s: any) => [s.user_id, s]));
+    const userMap = new Map(users?.map((u: any) => [u.id, u]));
+
+    // Enrich with student details
+    const enrichedAttendance = (attendanceRecords || []).map((record: any) => {
+      const student = studentMap.get(record.user_id);
+      const user = userMap.get(record.user_id);
+      
+      return {
+        id: record.id,
+        user_id: record.user_id,
+        attended: record.attended,
+        marked_by: record.marked_by,
+        marked_at: record.marked_at,
+        student: {
+          id: record.user_id,
+          name: student?.name || 'Unknown',
+          student_id: student?.student_id || 'N/A',
+          email: user?.email || '',
+          phone_number: student?.phone_number || null,
+        },
+      };
+    });
 
     // Get total from attendance records
     const totalMarked = enrichedAttendance.filter(rec => rec.attended).length;
