@@ -383,14 +383,14 @@ export default function CreateEventPage({
             <button
               type="submit"
               disabled={submitting}
-              className="px-8 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {submitting ? 'Creating...' : 'Create Event'}
             </button>
             <button
               type="button"
               onClick={() => router.push(`/cca-admin/${ccaId}/events`)}
-              className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
             >
               Cancel
             </button>

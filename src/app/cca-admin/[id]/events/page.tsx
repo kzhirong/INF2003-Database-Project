@@ -131,7 +131,7 @@ export default function CCAAdminEventsPage({
           </div>
           <button
             onClick={() => router.push(`/cca-admin/${ccaId}/events/create`)}
-            className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors"
+            className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors cursor-pointer"
           >
             + Create Event
           </button>
@@ -141,7 +141,7 @@ export default function CCAAdminEventsPage({
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setFilter('all')}
-            className={`px-6 py-3 font-semibold rounded-lg transition-colors ${
+            className={`px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer ${
               filter === 'all'
                 ? 'bg-[#F44336] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -151,7 +151,7 @@ export default function CCAAdminEventsPage({
           </button>
           <button
             onClick={() => setFilter('upcoming')}
-            className={`px-6 py-3 font-semibold rounded-lg transition-colors ${
+            className={`px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer ${
               filter === 'upcoming'
                 ? 'bg-[#F44336] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -161,7 +161,7 @@ export default function CCAAdminEventsPage({
           </button>
           <button
             onClick={() => setFilter('past')}
-            className={`px-6 py-3 font-semibold rounded-lg transition-colors ${
+            className={`px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer ${
               filter === 'past'
                 ? 'bg-[#F44336] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -280,7 +280,7 @@ export default function CCAAdminEventsPage({
                             `/cca-admin/${ccaId}/events/${event.id}/attendance`
                           )
                         }
-                        className="px-4 py-2 bg-blue-50 text-blue-700 font-semibold rounded-lg hover:bg-blue-100 transition-colors text-sm"
+                        className="px-4 py-2 bg-blue-50 text-blue-700 font-semibold rounded-lg hover:bg-blue-100 transition-colors text-sm cursor-pointer"
                       >
                         View Attendance
                       </button>
@@ -288,13 +288,13 @@ export default function CCAAdminEventsPage({
                         onClick={() =>
                           router.push(`/cca-admin/${ccaId}/events/${event.id}/edit`)
                         }
-                        className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                        className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors text-sm cursor-pointer"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(event.id)}
-                        className="px-4 py-2 bg-red-50 text-red-700 font-semibold rounded-lg hover:bg-red-100 transition-colors text-sm"
+                        className="px-4 py-2 bg-red-50 text-red-700 font-semibold rounded-lg hover:bg-red-100 transition-colors text-sm cursor-pointer"
                       >
                         Delete
                       </button>
@@ -330,7 +330,7 @@ export default function CCAAdminEventsPage({
             </p>
             <button
               onClick={() => router.push(`/cca-admin/${ccaId}/events/create`)}
-              className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors"
+              className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors cursor-pointer"
             >
               Create Event
             </button>

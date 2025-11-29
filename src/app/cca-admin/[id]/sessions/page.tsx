@@ -158,7 +158,7 @@ export default function CCAAdminSessionsPage({
           </div>
           <button
             onClick={() => router.push(`/cca-admin/${ccaId}/sessions/create`)}
-            className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors"
+            className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors cursor-pointer"
           >
             + Create Session
           </button>
@@ -168,7 +168,7 @@ export default function CCAAdminSessionsPage({
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setFilter('all')}
-            className={`px-6 py-3 font-semibold rounded-lg transition-colors ${
+            className={`px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer ${
               filter === 'all'
                 ? 'bg-[#F44336] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -178,7 +178,7 @@ export default function CCAAdminSessionsPage({
           </button>
           <button
             onClick={() => setFilter('upcoming')}
-            className={`px-6 py-3 font-semibold rounded-lg transition-colors ${
+            className={`px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer ${
               filter === 'upcoming'
                 ? 'bg-[#F44336] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -188,7 +188,7 @@ export default function CCAAdminSessionsPage({
           </button>
           <button
             onClick={() => setFilter('past')}
-            className={`px-6 py-3 font-semibold rounded-lg transition-colors ${
+            className={`px-6 py-3 font-semibold rounded-lg transition-colors cursor-pointer ${
               filter === 'past'
                 ? 'bg-[#F44336] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -226,7 +226,7 @@ export default function CCAAdminSessionsPage({
                     e.stopPropagation();
                     handleDelete(session.id);
                   }}
-                  className="absolute top-2 right-2 px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded hover:bg-red-600 transition-colors z-10"
+                  className="absolute top-2 right-2 px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded hover:bg-red-600 transition-colors z-10 cursor-pointer"
                   title="Delete session"
                 >
                   Delete
@@ -260,7 +260,7 @@ export default function CCAAdminSessionsPage({
             </p>
             <button
               onClick={() => router.push(`/cca-admin/${ccaId}/sessions/create`)}
-              className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors"
+              className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors cursor-pointer"
             >
               Create Session
             </button>
@@ -281,13 +281,13 @@ export default function CCAAdminSessionsPage({
               <div className="flex justify-end gap-4">
                 <button
                   onClick={() => setDeleteId(null)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                  className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
                 >
                   Delete
                 </button>

@@ -294,13 +294,13 @@ export default function SessionAttendancePage({
           <div className="flex gap-2">
             <button
               onClick={selectAll}
-              className="px-4 py-3 bg-green-50 text-green-700 font-semibold rounded-lg hover:bg-green-100 transition-colors"
+              className="px-4 py-3 bg-green-50 text-green-700 font-semibold rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
             >
               Select All
             </button>
             <button
               onClick={deselectAll}
-              className="px-4 py-3 bg-red-50 text-red-700 font-semibold rounded-lg hover:bg-red-100 transition-colors"
+              className="px-4 py-3 bg-red-50 text-red-700 font-semibold rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
             >
               Deselect All
             </button>
@@ -388,13 +388,13 @@ export default function SessionAttendancePage({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-8 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {saving ? 'Saving...' : 'Save Attendance'}
           </button>
           <button
             onClick={() => router.push(`/cca-admin/${ccaId}/sessions`)}
-            className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+            className="px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
           >
             Back to Sessions
           </button>
