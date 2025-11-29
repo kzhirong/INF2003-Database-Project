@@ -74,7 +74,15 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
     try {
       setLoading(true);
       const response = await fetch(`/api/ccas/${resolvedParams.id}`);
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse CCA data as JSON:", parseError);
+        console.error("Response was:", responseText);
+        throw new Error("Invalid JSON response from server (Fetch CCA): " + responseText.substring(0, 200));
+      }
 
       if (data.success) {
         const cca = data.data;
@@ -211,7 +219,15 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
         body: JSON.stringify(ccaData)
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse save response as JSON:", parseError);
+        console.error("Response was:", responseText);
+        throw new Error("Invalid JSON response from server (Save CCA): " + responseText.substring(0, 200));
+      }
 
       if (data.success) {
         setSuccess("Changes saved successfully!");

@@ -61,7 +61,15 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
       
       // Fetch CCA Data
       const ccaResponse = await fetch(`/api/ccas/${resolvedParams.id}`);
-      const ccaData = await ccaResponse.json();
+      const ccaResponseText = await ccaResponse.text();
+      let ccaData;
+      try {
+        ccaData = JSON.parse(ccaResponseText);
+      } catch (parseError) {
+        console.error("Failed to parse CCA data as JSON:", parseError);
+        console.error("Response was:", ccaResponseText);
+        throw new Error("Invalid JSON response from server (Fetch CCA): " + ccaResponseText.substring(0, 200));
+      }
 
       if (ccaData.success) {
         const cca = ccaData.data;
@@ -95,7 +103,15 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
 
       // Fetch User Data (Email)
       const userResponse = await fetch(`/api/admin/cca-user/${resolvedParams.id}`);
-      const userData = await userResponse.json();
+      const userResponseText = await userResponse.text();
+      let userData;
+      try {
+        userData = JSON.parse(userResponseText);
+      } catch (parseError) {
+        console.error("Failed to parse user data as JSON:", parseError);
+        console.error("Response was:", userResponseText);
+        throw new Error("Invalid JSON response from server (Fetch User): " + userResponseText.substring(0, 200));
+      }
       
       if (userData.success) {
         setEmail(userData.email || "");
@@ -190,7 +206,15 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify(ccaData)
       });
 
-      const ccaUpdateResult = await ccaUpdateResponse.json();
+      const ccaUpdateResponseText = await ccaUpdateResponse.text();
+      let ccaUpdateResult;
+      try {
+        ccaUpdateResult = JSON.parse(ccaUpdateResponseText);
+      } catch (parseError) {
+        console.error("Failed to parse CCA update response as JSON:", parseError);
+        console.error("Response was:", ccaUpdateResponseText);
+        throw new Error("Invalid JSON response from server (Update CCA): " + ccaUpdateResponseText.substring(0, 200));
+      }
 
       if (!ccaUpdateResult.success) {
         throw new Error(ccaUpdateResult.error || "Failed to update CCA details");
@@ -204,7 +228,15 @@ export default function AdminEditCCAPage({ params }: { params: Promise<{ id: str
           body: JSON.stringify({ email, password })
         });
 
-        const userUpdateResult = await userUpdateResponse.json();
+        const userUpdateResponseText = await userUpdateResponse.text();
+        let userUpdateResult;
+        try {
+          userUpdateResult = JSON.parse(userUpdateResponseText);
+        } catch (parseError) {
+          console.error("Failed to parse user update response as JSON:", parseError);
+          console.error("Response was:", userUpdateResponseText);
+          throw new Error("Invalid JSON response from server (Update User): " + userUpdateResponseText.substring(0, 200));
+        }
         if (!userUpdateResult.success) {
           throw new Error(userUpdateResult.error || "Failed to update user credentials");
         }

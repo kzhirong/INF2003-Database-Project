@@ -236,7 +236,15 @@ export default function AdminDashboard() {
         }),
       });
 
-      const checkData = await checkResponse.json();
+      const checkResponseText = await checkResponse.text();
+      let checkData;
+      try {
+        checkData = JSON.parse(checkResponseText);
+      } catch (parseError) {
+        console.error("Failed to parse check response as JSON:", parseError);
+        console.error("Response was:", checkResponseText);
+        throw new Error("Invalid JSON response from server (Check Student): " + checkResponseText.substring(0, 200));
+      }
 
       if (!checkData.success) {
         setError(checkData.error || "Failed to validate student data");
@@ -270,7 +278,15 @@ export default function AdminDashboard() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse student creation response as JSON:", parseError);
+        console.error("Response was:", responseText);
+        throw new Error("Invalid JSON response from server (Student Creation): " + responseText.substring(0, 200));
+      }
 
       if (!data.success) {
         console.error("Student creation error:", data);
@@ -429,8 +445,16 @@ export default function AdminDashboard() {
         }),
       });
 
-      const userData = await createUserResponse.json();
-      console.log("Create user response:", userData);
+      const responseTextUser = await createUserResponse.text();
+      let userData;
+      try {
+        userData = JSON.parse(responseTextUser);
+        console.log("Create user response:", userData);
+      } catch (parseError) {
+        console.error("Failed to parse user creation response as JSON:", parseError);
+        console.error("Response was:", responseTextUser);
+        throw new Error("Invalid JSON response from server (User Creation): " + responseTextUser.substring(0, 200));
+      }
 
       if (!userData.success) {
         console.error("User creation error:", userData);
