@@ -1033,11 +1033,6 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                           alt="Hero banner preview"
                           className="w-full h-full object-cover"
                         />
-                        {heroImageFile && (
-                          <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg">
-                            Not saved yet
-                          </div>
-                        )}
                       </div>
 
                       {/* Remove Button */}
@@ -1121,7 +1116,7 @@ export default function EditCCAPage({ params }: { params: Promise<{ id: string }
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className={`w-full px-8 py-4 rounded-lg font-semibold text-lg transition-colors ${
+                className={`w-full px-8 py-4 rounded-lg font-semibold text-lg transition-colors cursor-pointer ${
                   saving
                     ? "bg-gray-400 text-white cursor-not-allowed"
                     : "bg-[#F44336] text-white hover:bg-[#D32F2F]"
