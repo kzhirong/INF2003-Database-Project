@@ -7,6 +7,7 @@ import EventCard from "@/components/EventCard";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 
 interface MyCCA {
   id: string;
@@ -24,8 +25,28 @@ export default function Dashboard() {
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
   useEffect(() => {
     checkAuth();
+
+    // Check for success message in URL
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('success');
+    if (success) {
+      if (success === 'image') {
+        setSuccessMessage("Profile image updated successfully!");
+      } else if (success === 'password') {
+        setSuccessMessage("Password updated successfully!");
+      }
+
+      // Clean up URL
+      window.history.replaceState({}, '', '/dashboard');
+
+      // Clear message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
   }, []);
 
   useEffect(() => {
@@ -76,6 +97,12 @@ export default function Dashboard() {
         router.push(`/cca-admin/${adminData.cca_id}`);
       }
     }
+  };
+
+  const handleProfileUpdate = (type: 'image' | 'password') => {
+    // Use Next.js router for smoother updates and to avoid "window.location" issues in modals
+    router.push(`/dashboard?success=${type}`);
+    router.refresh();
   };
 
   const fetchMyCCAs = async () => {
@@ -196,6 +223,13 @@ export default function Dashboard() {
       {/* Navigation Bar */}
       <NavbarClient />
 
+      {/* Success Message Banner */}
+      {successMessage && (
+        <div className="bg-green-100 border-b border-green-200 text-green-800 px-4 py-3 text-center">
+          <p className="font-medium">{successMessage}</p>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="py-8">
         {/* Breadcrumb */}
@@ -212,9 +246,17 @@ export default function Dashboard() {
           <div className="flex items-center justify-between gap-6">
             {/* Left: Profile Picture and User Info */}
             <div className="flex items-center gap-6">
-              {/* Profile Picture - Placeholder with initials */}
-              <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 flex-shrink-0">
-                {userInitials}
+              {/* Profile Picture */}
+              <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 flex-shrink-0 overflow-hidden border-2 border-white shadow-sm">
+                {user.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  userInitials
+                )}
               </div>
 
               {/* User Info */}
@@ -222,9 +264,21 @@ export default function Dashboard() {
                 <h2 className="text-2xl md:text-3xl font-bold text-black mb-1">
                   {userFullName}
                 </h2>
-                <p className="text-base md:text-lg text-gray-600">
-                  {userEmail}
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-base md:text-lg text-gray-600">
+                    {userEmail}
+                  </p>
+                  <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                    title="Settings"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -370,7 +424,10 @@ export default function Dashboard() {
                         View Registrations
                       </button>
                     </Link>
-                    <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center">
+                    <button
+                      onClick={() => setIsSettingsOpen(true)}
+                      className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"
+                    >
                       Settings
                     </button>
                   </div>
@@ -380,6 +437,14 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      <ProfileSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        user={user}
+        onProfileUpdate={handleProfileUpdate}
+      />
     </div>
   );
 }
+
