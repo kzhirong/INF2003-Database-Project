@@ -169,25 +169,8 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            {/* Right: Tab Navigation Buttons */}
+            {/* Right: Tab Navigation Buttons - Moved to Navbar */}
             <div className="hidden md:flex items-center gap-4">
-              <button
-                className="px-6 py-2 text-base font-semibold text-white bg-[#F44336] rounded-lg cursor-pointer"
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => router.push(`/cca-admin/${resolvedParams.id}/members`)}
-                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                My Members
-              </button>
-              <button
-                onClick={() => router.push(`/ccas/${resolvedParams.id}/edit`)}
-                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Manage Page
-              </button>
             </div>
           </div>
         </div>
@@ -215,7 +198,11 @@ export default function CCAAdminDashboard({ params }: { params: Promise<{ id: st
                 {upcomingEvents.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {upcomingEvents.map((event) => (
-                      <EventCard key={event.id} {...event} />
+                      <EventCard 
+                        key={event.id} 
+                        {...event} 
+                        href={`/cca-admin/${resolvedParams.id}/events/${event.id}/attendance`}
+                      />
                     ))}
                   </div>
                 ) : (

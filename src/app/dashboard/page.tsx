@@ -85,7 +85,7 @@ export default function Dashboard() {
       
       // Fetch memberships
       const { data: memberships, error } = await supabase
-        .from("members")
+        .from("cca_membership")
         .select("cca_id")
         .eq("user_id", user.id);
 
@@ -220,22 +220,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Right: Tab Navigation Buttons */}
+            {/* Right: Tab Navigation Buttons - Removed */}
             <div className="hidden md:flex items-center gap-8">
-              <button className="px-6 py-2 text-xl font-semibold text-white bg-[#F44336] rounded-3xl hover:bg-[#d32f2f] transition-colors">
-                Overview
-              </button>
-              <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
-                My CCAs
-              </button>
-              <Link href="/events?filter=registered">
-                <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
-                  My Events
-                </button>
-              </Link>
-              <button className="px-6 py-2 text-xl font-medium text-black bg-white border-2 border-black rounded-3xl hover:bg-gray-50 transition-colors">
-                Settings
-              </button>
             </div>
           </div>
         </div>
