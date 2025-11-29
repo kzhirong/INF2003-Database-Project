@@ -6,31 +6,36 @@ interface CTABlockRendererProps {
 }
 
 export default function CTABlockRenderer({ block }: CTABlockRendererProps) {
-  const { title, description, buttonText, buttonLink, backgroundColor = '#F44336' } = block.config;
+  const { title, description, link } = block.config;
+
+  // Format link to handle external URLs
+  const formatLink = (url: string) => {
+    if (url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `https://${url}`;
+  };
 
   return (
-    <div
-      className="rounded-lg p-12 text-center text-white"
-      style={{ backgroundColor }}
-    >
-      <h3 className="text-3xl md:text-4xl font-bold mb-4">{title}</h3>
+    <div>
+      <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
 
-      {description && (
-        <p className="text-lg md:text-xl mb-8 opacity-90">{description}</p>
-      )}
+      <div className="flex items-start justify-between gap-4">
+        {description && (
+          <p className="text-gray-600 text-base leading-relaxed whitespace-pre-wrap flex-grow">{description}</p>
+        )}
 
-      {buttonLink ? (
-        <Link
-          href={buttonLink}
-          className="inline-block bg-white text-gray-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors"
-        >
-          {buttonText}
-        </Link>
-      ) : (
-        <button className="inline-block bg-white text-gray-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors">
-          {buttonText}
-        </button>
-      )}
+        {link && (
+          <a
+            href={formatLink(link)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-[#F44336] hover:bg-[#D32F2F] text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md whitespace-nowrap flex-shrink-0"
+          >
+            Click for Link!
+          </a>
+        )}
+      </div>
     </div>
   );
 }

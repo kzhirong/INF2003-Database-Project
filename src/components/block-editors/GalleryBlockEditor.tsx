@@ -171,18 +171,18 @@ export default function GalleryBlockEditor({ block, onUpdate }: GalleryBlockEdit
         
         {/* Image Preview Grid */}
         {block.config.images.length > 0 && (
-          <div 
+          <div
             className={`grid gap-4 mb-4`}
             style={{
-              gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`
+              gridTemplateColumns: `repeat(${gridCols}, 1fr)`
             }}
           >
             {block.config.images.map((image, index) => (
-              <div key={index} className="relative group">
+              <div key={index} className="relative group aspect-square">
                 <img
                   src={image}
                   alt={`Gallery image ${index + 1}`}
-                  className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                  className="w-full h-full object-cover rounded-lg border-2 border-gray-200"
                 />
                 <button
                   type="button"

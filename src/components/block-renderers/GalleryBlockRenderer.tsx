@@ -5,19 +5,18 @@ interface GalleryBlockRendererProps {
 }
 
 export default function GalleryBlockRenderer({ block }: GalleryBlockRendererProps) {
-  const { images, columns = 3, caption } = block.config;
-
-  const columnClasses = {
-    2: 'grid-cols-1 md:grid-cols-2',
-    3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
-    4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-  };
+  const { images, gridView = 1 } = block.config;
 
   return (
     <div>
-      <div className={`grid ${columnClasses[columns]} gap-4`}>
+      <div
+        className="grid gap-4"
+        style={{
+          gridTemplateColumns: `repeat(${gridView}, 1fr)`
+        }}
+      >
         {images.map((image, index) => (
-          <div key={index} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+          <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
             {image ? (
               <img
                 src={image}
@@ -43,9 +42,6 @@ export default function GalleryBlockRenderer({ block }: GalleryBlockRendererProp
           </div>
         ))}
       </div>
-      {caption && (
-        <p className="text-sm text-gray-500 text-center mt-4">{caption}</p>
-      )}
     </div>
   );
 }
