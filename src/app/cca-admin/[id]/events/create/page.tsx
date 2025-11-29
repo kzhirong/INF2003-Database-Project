@@ -69,6 +69,24 @@ export default function CreateEventPage({
     setSubmitting(true);
     setMessage(null);
 
+    // Validation Checks
+    const now = new Date();
+    // Create event date object combining date and start time
+    const eventDateTime = new Date(`${formData.date}T${formData.start_time}`);
+    
+    // 1. Event date cannot be before current time
+    if (eventDateTime < now) {
+      setMessage({
+        type: 'error',
+        text: 'Event date and time cannot be in the past.',
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setSubmitting(false);
+      return;
+    }
+
+    // 2. Registration deadline validation removed as requested
+
     try {
       // Upload poster if exists
       let poster_url = null;
@@ -115,9 +133,7 @@ export default function CreateEventPage({
           type: 'success',
           text: 'Event created successfully!',
         });
-        setTimeout(() => {
-          router.push(`/cca-admin/${ccaId}/events`);
-        }, 1500);
+        router.push(`/cca-admin/${ccaId}/events`);
       } else {
         setMessage({ type: 'error', text: result.error });
       }

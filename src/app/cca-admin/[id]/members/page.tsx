@@ -211,25 +211,8 @@ export default function CCAAdminMembers({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            {/* Right: Tab Navigation Buttons */}
+            {/* Right: Tab Navigation Buttons - Moved to Navbar */}
             <div className="hidden md:flex items-center gap-4">
-              <button
-                onClick={() => router.push(`/cca-admin/${resolvedParams.id}`)}
-                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Overview
-              </button>
-              <button
-                className="px-6 py-2 text-base font-semibold text-white bg-[#F44336] rounded-lg transition-colors cursor-pointer"
-              >
-                My Members
-              </button>
-              <button
-                onClick={() => router.push(`/ccas/${resolvedParams.id}/edit`)}
-                className="px-6 py-2 text-base font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Manage
-              </button>
             </div>
           </div>
         </div>

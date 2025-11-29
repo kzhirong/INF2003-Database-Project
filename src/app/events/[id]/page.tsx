@@ -380,20 +380,6 @@ export default function EventDetailPage({
                       <span className="font-semibold text-gray-900">
                         {event.current_registrations} / {event.max_attendees}
                       </span>
-                      <span
-                        className={`text-sm font-semibold ${
-                          event.is_full
-                            ? 'text-red-600'
-                            : event.spots_remaining !== null &&
-                              event.spots_remaining <= 5
-                            ? 'text-orange-600'
-                            : 'text-green-600'
-                        }`}
-                      >
-                        {event.is_full
-                          ? 'Full'
-                          : `${event.spots_remaining} spots left`}
-                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div

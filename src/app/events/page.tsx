@@ -177,7 +177,7 @@ export default function EventsPage() {
                 </h2>
                 <div className="flex flex-col gap-8">
                   {upcomingEvents.map((event) => (
-                    <EventCard key={event.id} {...event} />
+                    <EventCard key={event.id} {...event} variant="horizontal" />
                   ))}
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function EventsPage() {
                 </h2>
                 <div className="flex flex-col gap-8">
                   {pastEvents.map((event) => (
-                    <EventCard key={event.id} {...event} />
+                    <EventCard key={event.id} {...event} variant="horizontal" />
                   ))}
                 </div>
               </div>

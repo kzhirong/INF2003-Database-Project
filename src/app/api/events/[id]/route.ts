@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import connectDB from '@/lib/mongoose';
 import CCA from '@/models/CCA';
+import { deleteEventPoster, getPathFromUrl } from '@/lib/storage';
 
 // GET /api/events/[id] - Get single event details
 export async function GET(
@@ -30,12 +31,19 @@ export async function GET(
     await connectDB();
     const cca = await CCA.findById(event.cca_id).lean();
 
-    // Get registration summary
-    const { data: regSummary } = await supabase
-      .from('event_registration_summary')
-      .select('*')
-      .eq('id', event.id)
-      .single();
+    // Get registration count directly from attendance table
+    const { count: currentRegistrations } = await supabase
+      .from('attendance')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', event.id);
+
+    // Calculate spots remaining and is_full
+    const spotsRemaining = event.max_attendees 
+      ? event.max_attendees - (currentRegistrations || 0)
+      : null;
+    const isFull = event.max_attendees 
+      ? (currentRegistrations || 0) >= event.max_attendees
+      : false;
 
     // Check if current user is registered
     const {
@@ -55,9 +63,9 @@ export async function GET(
     const enrichedEvent = {
       ...event,
       cca_name: cca?.name || 'Unknown CCA',
-      current_registrations: regSummary?.current_registrations || 0,
-      spots_remaining: regSummary?.spots_remaining,
-      is_full: regSummary?.is_full || false,
+      current_registrations: currentRegistrations || 0,
+      spots_remaining: spotsRemaining,
+      is_full: isFull,
       is_registered: isRegistered,
     };
 
@@ -94,10 +102,10 @@ export async function PUT(
       );
     }
 
-    // Get event to check ownership
+    // Get event to check ownership and get current poster
     const { data: event } = await supabase
       .from('events')
-      .select('cca_id')
+      .select('cca_id, poster_url')
       .eq('id', id)
       .single();
 
@@ -123,6 +131,14 @@ export async function PUT(
     }
 
     const body = await request.json();
+
+    // Delete old poster if URL changed
+    if (body.poster_url && event.poster_url && body.poster_url !== event.poster_url) {
+      const oldPath = getPathFromUrl(event.poster_url);
+      if (oldPath) {
+        await deleteEventPoster(oldPath, supabase);
+      }
+    }
 
     // Update event
     const { data: updatedEvent, error } = await supabase
@@ -178,10 +194,10 @@ export async function DELETE(
       );
     }
 
-    // Get event to check ownership
+    // Get event to check ownership and get poster
     const { data: event } = await supabase
       .from('events')
-      .select('cca_id')
+      .select('cca_id, poster_url')
       .eq('id', id)
       .single();
 
@@ -204,6 +220,14 @@ export async function DELETE(
         { success: false, error: 'Forbidden - You can only delete events for your CCA' },
         { status: 403 }
       );
+    }
+
+    // Delete poster if exists
+    if (event.poster_url) {
+      const path = getPathFromUrl(event.poster_url);
+      if (path) {
+        await deleteEventPoster(path, supabase);
+      }
     }
 
     // Delete event (cascade deletes attendance records)

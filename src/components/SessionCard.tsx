@@ -64,17 +64,7 @@ export default function SessionCard({
         </div>
 
         {/* Attendance Badge */}
-        <div
-          className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${
-            attendanceRate >= 80
-              ? 'bg-green-100 text-green-800'
-              : attendanceRate >= 60
-              ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-red-100 text-red-800'
-          }`}
-        >
-          {attendanceRate}%
-        </div>
+        {/* Attendance Badge - Removed */}
       </div>
 
       {/* Date and Time */}
