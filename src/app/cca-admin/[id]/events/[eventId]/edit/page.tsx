@@ -197,9 +197,7 @@ export default function EditEventPage({
           type: 'success',
           text: 'Event updated successfully!',
         });
-        setTimeout(() => {
-          router.push(`/cca-admin/${ccaId}/events`);
-        }, 1500);
+        router.push(`/cca-admin/${ccaId}/events`);
       } else {
         setMessage({ type: 'error', text: result.error });
       }

@@ -133,9 +133,7 @@ export default function CreateEventPage({
           type: 'success',
           text: 'Event created successfully!',
         });
-        setTimeout(() => {
-          router.push(`/cca-admin/${ccaId}/events`);
-        }, 1500);
+        router.push(`/cca-admin/${ccaId}/events`);
       } else {
         setMessage({ type: 'error', text: result.error });
       }
