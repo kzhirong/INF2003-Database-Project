@@ -61,6 +61,7 @@ export interface CCAPageData {
 
   // Hero section (optional)
   heroImage?: string;
+  profileImage?: string;
   shortDescription?: string;
 
   // Dynamic content blocks
