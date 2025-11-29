@@ -71,7 +71,7 @@ export default function Dashboard() {
         .select("cca_id")
         .eq("user_id", user.id)
         .single();
-      
+
       if (adminData?.cca_id) {
         router.push(`/cca-admin/${adminData.cca_id}`);
       }
@@ -82,7 +82,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       const supabase = createClient();
-      
+
       // Fetch memberships
       const { data: memberships, error } = await supabase
         .from("cca_membership")
@@ -100,7 +100,7 @@ export default function Dashboard() {
         });
 
         const ccasData = await Promise.all(ccaPromises);
-        
+
         const transformed = ccasData
           .filter(cca => cca !== null)
           .map((cca: any) => ({
@@ -112,7 +112,7 @@ export default function Dashboard() {
               ? `${cca.schedule[0].day}, ${cca.schedule[0].startTime}, ${cca.schedule[0].location}`
               : "No scheduled sessions"
           }));
-        
+
         setMyCCAs(transformed);
       } else {
         setMyCCAs([]);
@@ -128,7 +128,7 @@ export default function Dashboard() {
   const fetchUpcomingEvents = async () => {
     try {
       const supabase = createClient();
-      
+
       // Fetch user's registered events
       const { data: attendanceRecords, error } = await supabase
         .from('attendance')
@@ -138,8 +138,16 @@ export default function Dashboard() {
       if (error) throw error;
 
       if (attendanceRecords && attendanceRecords.length > 0) {
-        const eventIds = attendanceRecords.map(record => record.event_id);
-        
+        // Filter out null event_ids (e.g. attendance for sessions)
+        const eventIds = attendanceRecords
+          .map(record => record.event_id)
+          .filter(id => id !== null);
+
+        if (eventIds.length === 0) {
+          setUpcomingEvents([]);
+          return;
+        }
+
         // Fetch event details
         const { data: events, error: eventsError } = await supabase
           .from('events')
