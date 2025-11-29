@@ -3,10 +3,6 @@
 export type BlockType =
   | "text"
   | "gallery"
-  | "events"
-  | "leadership"
-  | "achievements"
-  | "stats"
   | "cta";
 
 export interface BaseBlock {
@@ -18,75 +14,18 @@ export interface BaseBlock {
 export interface TextBlock extends BaseBlock {
   type: "text";
   config: {
-    content: string;
-    alignment?: "left" | "center" | "right";
-    fontSize?: "small" | "medium" | "large";
+    title: string;
+    description: string;
   };
 }
 
 export interface GalleryBlock extends BaseBlock {
   type: "gallery";
   config: {
+    title: string;
+    description?: string;
     images: string[];
-    columns?: 2 | 3 | 4;
-    caption?: string;
-  };
-}
-
-export interface EventItem {
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  description: string;
-}
-
-export interface EventsBlock extends BaseBlock {
-  type: "events";
-  config: {
-    title?: string;
-    events: EventItem[];
-    layout?: "list" | "grid";
-  };
-}
-
-export interface LeadershipMember {
-  name: string;
-  role: string;
-  year: string;
-  course: string;
-  imageUrl?: string;
-}
-
-export interface LeadershipBlock extends BaseBlock {
-  type: "leadership";
-  config: {
-    title?: string;
-    members: LeadershipMember[];
-    layout?: "grid" | "list";
-  };
-}
-
-export interface AchievementsBlock extends BaseBlock {
-  type: "achievements";
-  config: {
-    title?: string;
-    achievements: string[];
-    style?: "list" | "badges";
-  };
-}
-
-export interface StatItem {
-  label: string;
-  value: string | number;
-  icon?: string;
-}
-
-export interface StatsBlock extends BaseBlock {
-  type: "stats";
-  config: {
-    stats: StatItem[];
-    layout?: "horizontal" | "grid";
+    gridView?: 1 | 2 | 3 | 4;
   };
 }
 
@@ -95,19 +34,13 @@ export interface CTABlock extends BaseBlock {
   config: {
     title: string;
     description?: string;
-    buttonText: string;
-    buttonLink?: string;
-    backgroundColor?: string;
+    link: string;
   };
 }
 
 export type Block =
   | TextBlock
   | GalleryBlock
-  | EventsBlock
-  | LeadershipBlock
-  | AchievementsBlock
-  | StatsBlock
   | CTABlock;
 
 export interface ScheduleSession {
@@ -128,6 +61,7 @@ export interface CCAPageData {
 
   // Hero section (optional)
   heroImage?: string;
+  profileImage?: string;
   shortDescription?: string;
 
   // Dynamic content blocks

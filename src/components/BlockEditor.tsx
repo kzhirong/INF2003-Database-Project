@@ -4,10 +4,6 @@ import { useState } from "react";
 import { Block, BlockType } from "@/types/blocks";
 import TextBlockEditor from "./block-editors/TextBlockEditor";
 import GalleryBlockEditor from "./block-editors/GalleryBlockEditor";
-import EventsBlockEditor from "./block-editors/EventsBlockEditor";
-import LeadershipBlockEditor from "./block-editors/LeadershipBlockEditor";
-import AchievementsBlockEditor from "./block-editors/AchievementsBlockEditor";
-import StatsBlockEditor from "./block-editors/StatsBlockEditor";
 import CTABlockEditor from "./block-editors/CTABlockEditor";
 
 interface BlockEditorProps {
@@ -20,13 +16,9 @@ export default function BlockEditor({ blocks, onBlocksChange }: BlockEditorProps
 
   const blockTypeLabels: Record<BlockType, string> = {
     text: "Text Block",
-    gallery: "Gallery Block",
-    events: "Events Block",
-    leadership: "Leadership Block",
-    achievements: "Achievements Block",
-    stats: "Stats Block",
-    cta: "Call-to-Action Block"
-  };
+    gallery: "Gallery",
+    cta: "Call-to-Action"
+  } as Record<BlockType, string>;
 
   const createNewBlock = (type: BlockType): Block => {
     const id = `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -39,9 +31,8 @@ export default function BlockEditor({ blocks, onBlocksChange }: BlockEditorProps
           type: "text",
           order,
           config: {
-            content: "",
-            alignment: "left",
-            fontSize: "medium"
+            title: "",
+            description: ""
           }
         };
       case "gallery":
@@ -50,48 +41,10 @@ export default function BlockEditor({ blocks, onBlocksChange }: BlockEditorProps
           type: "gallery",
           order,
           config: {
+            title: "",
+            description: "",
             images: [],
-            columns: 3
-          }
-        };
-      case "events":
-        return {
-          id,
-          type: "events",
-          order,
-          config: {
-            events: [],
-            layout: "grid"
-          }
-        };
-      case "leadership":
-        return {
-          id,
-          type: "leadership",
-          order,
-          config: {
-            members: [],
-            layout: "grid"
-          }
-        };
-      case "achievements":
-        return {
-          id,
-          type: "achievements",
-          order,
-          config: {
-            achievements: [],
-            style: "list"
-          }
-        };
-      case "stats":
-        return {
-          id,
-          type: "stats",
-          order,
-          config: {
-            stats: [],
-            layout: "horizontal"
+            gridView: 1
           }
         };
       case "cta":
@@ -101,7 +54,18 @@ export default function BlockEditor({ blocks, onBlocksChange }: BlockEditorProps
           order,
           config: {
             title: "",
-            buttonText: "Join Now"
+            description: "",
+            link: ""
+          }
+        };
+      default:
+        return {
+          id,
+          type: "text",
+          order,
+          config: {
+            title: "",
+            description: ""
           }
         };
     }
@@ -148,16 +112,10 @@ export default function BlockEditor({ blocks, onBlocksChange }: BlockEditorProps
         return <TextBlockEditor block={block} onUpdate={handleUpdateBlock} />;
       case "gallery":
         return <GalleryBlockEditor block={block} onUpdate={handleUpdateBlock} />;
-      case "events":
-        return <EventsBlockEditor block={block} onUpdate={handleUpdateBlock} />;
-      case "leadership":
-        return <LeadershipBlockEditor block={block} onUpdate={handleUpdateBlock} />;
-      case "achievements":
-        return <AchievementsBlockEditor block={block} onUpdate={handleUpdateBlock} />;
-      case "stats":
-        return <StatsBlockEditor block={block} onUpdate={handleUpdateBlock} />;
       case "cta":
         return <CTABlockEditor block={block} onUpdate={handleUpdateBlock} />;
+      default:
+        return null;
     }
   };
 
@@ -168,7 +126,7 @@ export default function BlockEditor({ blocks, onBlocksChange }: BlockEditorProps
         <button
           type="button"
           onClick={() => setShowAddMenu(!showAddMenu)}
-          className="w-full px-6 py-4 bg-[#F44336] text-white rounded-lg font-semibold hover:bg-[#D32F2F] transition-colors flex items-center justify-center gap-2"
+          className="w-full px-8 py-4 bg-[#F44336] text-white rounded-lg font-semibold text-lg hover:bg-[#D32F2F] transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
           <span className="text-2xl">+</span>
           <span>Add Section</span>
