@@ -43,7 +43,7 @@ export default function LoginForm() {
         } else if (userData.role === "cca_admin" && userData.cca_id) {
           router.push(`/cca-admin/${userData.cca_id}`);
         } else {
-          router.push("/dashboard");
+          router.push("/landing");
         }
         router.refresh();
       }

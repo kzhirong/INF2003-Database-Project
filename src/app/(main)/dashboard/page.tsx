@@ -413,11 +413,7 @@ export default function Dashboard() {
                         Browse Events
                       </button>
                     </Link>
-                    <Link href="/events?filter=registered">
-                      <button className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center w-full">
-                        View Registrations
-                      </button>
-                    </Link>
+
                     <button
                       onClick={() => setIsSettingsOpen(true)}
                       className="bg-[#F5F5F5] p-4 rounded-lg text-sm md:text-base font-medium text-black hover:bg-gray-200 transition-colors text-center"

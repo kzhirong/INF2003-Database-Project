@@ -20,8 +20,11 @@ export async function GET(
       );
     }
 
-    // Count enrollments for this CCA
-    const { count, error } = await supabase
+    // Count enrollments for this CCA using admin client to bypass RLS
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const adminSupabase = createAdminClient();
+
+    const { count, error } = await adminSupabase
       .from('cca_membership')
       .select('*', { count: 'exact', head: true })
       .eq('cca_id', ccaId);

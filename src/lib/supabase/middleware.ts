@@ -94,7 +94,7 @@ export async function updateSession(request: NextRequest) {
         } else if (role === 'cca_admin' && cca_id) {
           url.pathname = `/cca-admin/${cca_id}`
         } else {
-          url.pathname = '/dashboard'
+          url.pathname = '/landing'
         }
         return NextResponse.redirect(url)
       }
@@ -133,7 +133,7 @@ export async function updateSession(request: NextRequest) {
         if (isEditPage || isAdminPage) {
           // Redirect students away from restricted pages
           const url = request.nextUrl.clone()
-          url.pathname = '/dashboard'
+          url.pathname = '/landing'
           return NextResponse.redirect(url)
         }
       }
