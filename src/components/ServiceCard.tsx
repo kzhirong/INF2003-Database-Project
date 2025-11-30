@@ -1,9 +1,12 @@
+import Link from "next/link";
+
 interface ServiceCardProps {
   title: string;
   description: string;
   icon?: React.ReactNode;
   image?: string;
   imageAlt?: string;
+  category?: string;
 }
 
 const ServiceCard = ({
@@ -11,7 +14,8 @@ const ServiceCard = ({
   description,
   icon,
   image,
-  imageAlt
+  imageAlt,
+  category
 }: ServiceCardProps) => {
   // Default crossed lines icon if no icon is provided
   const defaultIcon = (
@@ -34,8 +38,8 @@ const ServiceCard = ({
     </div>
   );
 
-  return (
-    <div className="bg-white shadow-sm border border-gray-100 text-center max-w-sm mx-auto">
+  const cardContent = (
+    <div className="bg-white shadow-sm border border-gray-100 text-center max-w-sm mx-auto hover:shadow-lg transition-shadow cursor-pointer h-full">
       {/* Content */}
       <div className="p-6 md:p-8">
         {/* Fixed size image */}
@@ -65,6 +69,17 @@ const ServiceCard = ({
       </div>
     </div>
   );
+
+  // If category is provided, wrap in Link to CCA page with category filter
+  if (category) {
+    return (
+      <Link href={`/ccas?category=${encodeURIComponent(category)}`}>
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return cardContent;
 };
 
 export default ServiceCard;

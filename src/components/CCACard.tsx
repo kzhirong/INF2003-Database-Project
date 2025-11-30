@@ -1,9 +1,12 @@
+import Link from "next/link";
+
 interface CCACardProps {
   title: string;
   category: string;
   memberStatus: string;
   upcomingEvent: string;
   image?: string;
+  id?: string;
 }
 
 const CCACard = ({
@@ -12,6 +15,7 @@ const CCACard = ({
   memberStatus,
   upcomingEvent,
   image,
+  id,
 }: CCACardProps) => {
   // Default crossed lines icon if no image is provided
   const defaultIcon = (
@@ -30,8 +34,8 @@ const CCACard = ({
     </svg>
   );
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+  const cardContent = (
+    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer">
       {/* Image/Icon Section */}
       <div className="w-full h-[150px] bg-[#F5F5F5] flex items-center justify-center">
         {image ? (
@@ -60,6 +64,17 @@ const CCACard = ({
       </div>
     </div>
   );
+
+  // If id is provided, wrap in Link, otherwise return as is
+  if (id) {
+    return (
+      <Link href={`/ccas/${id}`}>
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return cardContent;
 };
 
 export default CCACard;

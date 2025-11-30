@@ -69,8 +69,13 @@ export default function ProfileSettingsModal({ isOpen, onClose, user, onProfileU
 
     const handlePasswordUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Starting password update...");
         setMessage(null);
+
+        // Validation: New password cannot be same as old password
+        if (newPassword === oldPassword) {
+            setMessage({ type: "error", text: "New password must be different from current password" });
+            return;
+        }
 
         if (newPassword !== confirmPassword) {
             setMessage({ type: "error", text: "New passwords do not match" });
@@ -100,34 +105,38 @@ export default function ProfileSettingsModal({ isOpen, onClose, user, onProfileU
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || "Failed to update password");
+                // Show user-friendly error message in UI (not console)
+                setMessage({ type: "error", text: data.error || "Failed to update password" });
+                setPasswordLoading(false);
+                return;
             }
 
-            console.log("Password updated successfully via API. Triggering refresh sequence...");
+            // Show success message
+            setMessage({ type: "success", text: "Password updated successfully!" });
 
-            // Force reload immediately
-            console.log("Calling onProfileUpdate...");
-            onProfileUpdate("password");
+            // Clear form fields
+            setOldPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
 
-            console.log("Closing modal...");
-            onClose();
-
-            console.log("Pushing to router...");
-            router.push("/dashboard?success=password");
-
-            console.log("Refreshing router...");
-            router.refresh();
+            // Wait 1.5 seconds to show success message, then close and refresh
+            setTimeout(() => {
+                onProfileUpdate("password");
+                onClose();
+                router.push("/dashboard?success=password");
+                router.refresh();
+            }, 1500);
 
         } catch (error: any) {
-            console.error("Password update error:", error);
-            setMessage({ type: "error", text: error.message });
+            // Handle network errors or unexpected errors
+            setMessage({ type: "error", text: "Network error. Please try again." });
         } finally {
             setPasswordLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-400/50 p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b">

@@ -38,7 +38,6 @@ export async function POST(request: Request) {
         });
 
         if (signInError) {
-            console.error("Old password verification failed:", signInError);
             return NextResponse.json(
                 { error: "Incorrect old password" },
                 { status: 400 }
@@ -51,7 +50,6 @@ export async function POST(request: Request) {
         });
 
         if (updateError) {
-            console.error("Update user error:", updateError);
             return NextResponse.json(
                 { error: updateError.message },
                 { status: 500 }

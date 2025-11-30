@@ -44,33 +44,38 @@ export default async function Landing() {
                 {/* Top row - 3 cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <ServiceCard
-                    title="SPORTS"
+                    title="Sports"
                     description="Build physical fitness, teamwork, and competitive spirit through various athletic activities and tournaments"
                     image="/assets/cca-category-image/smc-1.jpg"
+                    category="Sports"
                   />
                   <ServiceCard
-                    title="PERFORMING ARTS"
+                    title="Arts & Culture"
                     description="Express creativity through dance, music, theatre, and cultural performances that inspire and entertain"
                     image="/assets/cca-category-image/Performing-Arts-Nritya.jpg"
+                    category="Arts & Culture"
                   />
                   <ServiceCard
-                    title="CLUBS & SOCIETIES"
+                    title="Special Interest"
                     description="Join diverse interest groups and academic societies to explore passions and connect with like-minded peers"
                     image="/assets/cca-category-image/Performing-Arts-Pamc.jpg"
+                    category="Special Interest"
                   />
                 </div>
 
                 {/* Bottom row - 2 cards centered */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                   <ServiceCard
-                    title="LEADERSHIP & SERVICE"
+                    title="Community Service"
                     description="Develop leadership skills while making a positive impact on the community through service projects and initiatives"
                     image="/assets/cca-category-image/Performing-Arts-Breakers.jpg"
+                    category="Community Service"
                   />
                   <ServiceCard
-                    title="STUDENT MANAGEMENT"
+                    title="Academic"
                     description="Take on responsibilities in student governance and event organization to shape campus life and culture"
                     image="/assets/cca-category-image/smc-2.jpg"
+                    category="Academic"
                   />
                 </div>
               </div>

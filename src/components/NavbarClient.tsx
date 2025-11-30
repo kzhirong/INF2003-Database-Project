@@ -193,13 +193,6 @@ export default function NavbarClient() {
           {/* Dashboard & Logout Buttons */}
           {user && (
             <div className="flex items-center gap-3">
-              {/* Show user name for students only */}
-              {userData?.role === "student" && userData.name && (
-                <span className="text-gray-700 font-semibold hidden lg:block">
-                  {userData.name}
-                </span>
-              )}
-
               {/* Dashboard button - Only show for students */}
               {userData?.role === "student" && (
                 <Link href="/dashboard">

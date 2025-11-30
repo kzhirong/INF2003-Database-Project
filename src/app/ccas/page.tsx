@@ -4,6 +4,7 @@ import NavbarClient from "@/components/NavbarClient";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface ScheduleSession {
   day: string;
@@ -25,6 +26,7 @@ interface CCA {
 }
 
 export default function CCAs() {
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState<string[]>([]);
@@ -33,6 +35,14 @@ export default function CCAs() {
 
   const [ccaItems, setCCAItems] = useState<CCA[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Check for category parameter in URL and apply filter
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setSelectedCategories([categoryParam]);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchCCAs();
@@ -92,7 +102,7 @@ export default function CCAs() {
     <div className="min-h-screen bg-[#FAFBFD]">
       <NavbarClient />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 md:px-16 lg:px-24 py-8">
+      <main className="max-w-7xl mx-auto py-8">
         {/* Breadcrumb */}
         <div className="text-sm text-gray-500 mb-6">
           <Link href="/" className="hover:text-[#F44336] transition-colors">HOME</Link>

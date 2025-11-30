@@ -8,6 +8,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import { getUserData } from "@/lib/auth";
 
 interface MyCCA {
   id: string;
@@ -15,6 +16,7 @@ interface MyCCA {
   category: string;
   memberStatus: string;
   upcomingEvent: string;
+  image?: string;
 }
 
 export default function Dashboard() {
@@ -62,31 +64,34 @@ export default function Dashboard() {
   }, [user]);
 
   const checkAuth = async () => {
-    try {
-      const { getUserData } = await import("@/lib/auth");
-      const data = await getUserData();
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (!data) {
-        router.push("/");
-        return;
-      }
-
-      // Set user object for other functions that need it (like fetchMyCCAs)
-      // We reconstruct a minimal user object since getUserData returns the full profile
-      setUser({ id: data.id, email: data.email });
-      setUserData(data);
-
-      // Redirect non-students
-      if (data.role === "system_admin") {
-        router.push("/admin");
-      } else if (data.role === "cca_admin") {
-        if (data.cca_id) {
-          router.push(`/cca-admin/${data.cca_id}`);
-        }
-      }
-    } catch (error) {
-      console.error("Error checking auth:", error);
+    if (authError || !user) {
       router.push("/");
+      return;
+    }
+
+    setUser(user);
+
+    // Fetch user details using centralized function
+    const data = await getUserData();
+
+    if (!data) {
+      console.error("Error fetching user data");
+      router.push("/");
+      return;
+    }
+
+    setUserData(data);
+
+    // Redirect non-students
+    if (data.role === "system_admin") {
+      router.push("/admin");
+    } else if (data.role === "cca_admin") {
+      if (data.cca_id) {
+        router.push(`/cca-admin/${data.cca_id}`);
+      }
     }
   };
 
@@ -126,7 +131,8 @@ export default function Dashboard() {
             memberStatus: "Member",
             upcomingEvent: cca.schedule?.[0]
               ? `${cca.schedule[0].day}, ${cca.schedule[0].startTime}, ${cca.schedule[0].location}`
-              : "No scheduled sessions"
+              : "No scheduled sessions",
+            image: cca.profileImage
           }));
 
         setMyCCAs(transformed);
@@ -201,9 +207,9 @@ export default function Dashboard() {
     );
   }
 
-  const userFullName = (userData.student_details as any)?.[0]?.name || userData.email || "Student";
+  const userFullName = userData.name || userData.email || "Student";
   const userEmail = user.email || "";
-  const userInitials = getInitials((userData.student_details as any)?.[0]?.name);
+  const userInitials = getInitials(userData.name);
 
   return (
     <div className="min-h-screen bg-[#FAFBFD]">
@@ -295,9 +301,12 @@ export default function Dashboard() {
                     </h2>
                     <Link
                       href="/ccas"
-                      className="text-sm md:text-base text-blue-600 hover:text-blue-800 font-medium underline"
+                      className="px-4 py-2 bg-[#F44336] text-white text-sm font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors flex items-center gap-2"
                     >
                       View All
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
                     </Link>
                   </div>
 
@@ -314,10 +323,12 @@ export default function Dashboard() {
                       {myCCAs.map((cca) => (
                         <CCACard
                           key={cca.id}
+                          id={cca.id}
                           title={cca.title}
                           category={cca.category}
                           memberStatus={cca.memberStatus}
                           upcomingEvent={cca.upcomingEvent}
+                          image={cca.image}
                         />
                       ))}
                     </div>
@@ -332,9 +343,12 @@ export default function Dashboard() {
                     </h2>
                     <Link
                       href="/events?filter=registered"
-                      className="text-sm md:text-base text-blue-600 hover:text-blue-800 font-medium underline"
+                      className="px-4 py-2 bg-[#F44336] text-white text-sm font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors flex items-center gap-2"
                     >
                       View All
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
                     </Link>
                   </div>
 
