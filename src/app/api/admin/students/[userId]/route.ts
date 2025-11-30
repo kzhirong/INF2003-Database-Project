@@ -202,7 +202,75 @@ export async function DELETE(
 
     const adminClient = createAdminClient();
 
-    // Delete from public users table first
+    // 1. Fetch User Details (to get avatar URL)
+    // We need to check auth metadata for avatar_url
+    const { data: authUser } = await adminClient.auth.admin.getUserById(userId);
+    const avatarUrl = authUser?.user?.user_metadata?.avatar_url;
+
+    // 2. Delete Attendance Records
+    await adminClient
+      .from('attendance')
+      .delete()
+      .eq('user_id', userId);
+
+    // 3. Delete CCA Memberships
+    await adminClient
+      .from('cca_membership')
+      .delete()
+      .eq('user_id', userId);
+
+    // 4. Delete Student Details
+    await adminClient
+      .from('student_details')
+      .delete()
+      .eq('user_id', userId);
+
+    // 5. Delete CCA Admin Details (if applicable)
+    await adminClient
+      .from('cca_admin_details')
+      .delete()
+      .eq('user_id', userId);
+
+    // 6. Delete Storage Files (Profile Image)
+    if (avatarUrl) {
+      try {
+        // Helper to extract bucket and path from URL
+        const extractFileDetails = (url: string) => {
+          try {
+            if (url.startsWith('http')) {
+              const urlObj = new URL(url);
+              const parts = urlObj.pathname.split('/public/');
+              if (parts.length > 1) {
+                const fullPath = parts[1];
+                const pathParts = fullPath.split('/');
+                const bucket = pathParts[0];
+                const path = pathParts.slice(1).join('/');
+                return { bucket, path };
+              }
+            }
+            return null;
+          } catch (e) {
+            return null;
+          }
+        };
+
+        const details = extractFileDetails(avatarUrl);
+        if (details) {
+          const { error: storageError } = await adminClient
+            .storage
+            .from(details.bucket)
+            .remove([details.path]);
+          
+          if (storageError) {
+            console.error('Error deleting profile image:', storageError);
+          }
+        }
+      } catch (e) {
+        console.error('Error processing avatar URL:', e);
+      }
+    }
+
+    // 7. Delete from public users table
     const { error: deletePublicError } = await adminClient
       .from('users')
       .delete()
@@ -210,10 +278,9 @@ export async function DELETE(
 
     if (deletePublicError) {
       console.error('Error deleting from public users table:', deletePublicError);
-      // Continue to delete from Auth even if this fails
     }
 
-    // Delete the user from Supabase Auth (this should cascade to student_details via FK)
+    // 8. Delete the user from Supabase Auth
     const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (deleteAuthError) {
@@ -225,7 +292,7 @@ export async function DELETE(
     }
 
     return NextResponse.json(
-      { success: true, message: 'Student deleted successfully' },
+      { success: true, message: 'Student and all associated data deleted successfully' },
       { status: 200 }
     );
   } catch (error: any) {

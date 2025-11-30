@@ -173,7 +173,7 @@ export async function DELETE(
       .eq('id', user.id)
       .single();
 
-    // Only system_admin can delete CCAs (prevent CCA admins from deleting their own CCAs)
+    // Only system_admin can delete CCAs
     if (!userData || userData.role !== 'system_admin') {
       return NextResponse.json(
         { success: false, error: 'Forbidden - Only system admins can delete CCAs' },
@@ -183,7 +183,7 @@ export async function DELETE(
 
     await connectDB();
 
-    // Check if CCA exists
+    // 1. Fetch CCA Details (to get image URLs)
     const existingCCA = await CCA.findById(id);
     if (!existingCCA) {
       return NextResponse.json(
@@ -192,11 +192,63 @@ export async function DELETE(
       );
     }
 
-    // Find and delete the CCA admin user from Supabase
-    // Use admin client to bypass RLS and find the user
     const adminClient = createAdminClient();
 
-    // First, find the CCA admin in cca_admin_details table
+    // 2. Fetch & Delete Events
+    // Get all events for this CCA
+    const { data: events } = await adminClient
+      .from('events')
+      .select('id, poster_url')
+      .eq('cca_id', id);
+
+    const eventIds = events?.map(e => e.id) || [];
+    const posterUrls = events?.map(e => e.poster_url).filter(Boolean) || [];
+
+    if (eventIds.length > 0) {
+      // Delete attendance for these events
+      await adminClient
+        .from('attendance')
+        .delete()
+        .in('event_id', eventIds);
+
+      // Delete the events themselves
+      await adminClient
+        .from('events')
+        .delete()
+        .in('id', eventIds);
+    }
+
+    // 3. Fetch & Delete Sessions
+    // Get all sessions for this CCA
+    const { data: sessions } = await adminClient
+      .from('sessions')
+      .select('id')
+      .eq('cca_id', id);
+
+    const sessionIds = sessions?.map(s => s.id) || [];
+
+    if (sessionIds.length > 0) {
+      // Delete attendance for these sessions
+      await adminClient
+        .from('attendance')
+        .delete()
+        .in('session_id', sessionIds);
+
+      // Delete the sessions themselves
+      await adminClient
+        .from('sessions')
+        .delete()
+        .in('id', sessionIds);
+    }
+
+    // 4. Delete Memberships
+    await adminClient
+      .from('cca_membership')
+      .delete()
+      .eq('cca_id', id);
+
+    // 5. Delete CCA Admin
+    // Find the CCA admin in cca_admin_details table
     const { data: ccaAdminDetails } = await adminClient
       .from('cca_admin_details')
       .select('user_id')
@@ -204,36 +256,96 @@ export async function DELETE(
       .single();
 
     if (ccaAdminDetails) {
-      // Explicitly delete from public users table first to ensure it's removed
-      const { error: deletePublicError } = await adminClient
+      // Delete from cca_admin_details
+      await adminClient
+        .from('cca_admin_details')
+        .delete()
+        .eq('cca_id', id);
+
+      // Delete from public users table
+      await adminClient
         .from('users')
         .delete()
         .eq('id', ccaAdminDetails.user_id);
 
-      if (deletePublicError) {
-        console.error('Error deleting from public users table:', deletePublicError);
-        // We continue to delete from Auth even if this fails, to ensure access is revoked
-      }
-
-      // Delete the user from Supabase Auth
+      // Delete from Supabase Auth
       const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(
         ccaAdminDetails.user_id
       );
 
       if (deleteAuthError) {
         console.error('Error deleting CCA admin from Auth:', deleteAuthError);
-        return NextResponse.json(
-          { success: false, error: `Failed to delete CCA admin account: ${deleteAuthError.message}` },
-          { status: 500 }
-        );
+        // Continue anyway to ensure other data is cleaned up
       }
     }
 
-    // Delete the CCA from MongoDB
+    // 6. Delete Storage Files
+    const filesToDelete: { bucket: string; path: string }[] = [];
+
+    // Helper to extract bucket and path from URL
+    const extractFileDetails = (url: string) => {
+      try {
+        // Assuming URL format: .../storage/v1/object/public/[bucket]/[path]
+        if (url.startsWith('http')) {
+          const urlObj = new URL(url);
+          const parts = urlObj.pathname.split('/public/');
+          if (parts.length > 1) {
+            const fullPath = parts[1];
+            const pathParts = fullPath.split('/');
+            const bucket = pathParts[0];
+            const path = pathParts.slice(1).join('/');
+            return { bucket, path };
+          }
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    if (existingCCA.profileImage) {
+      const details = extractFileDetails(existingCCA.profileImage);
+      if (details) filesToDelete.push(details);
+    }
+
+    if (existingCCA.heroImage) {
+      const details = extractFileDetails(existingCCA.heroImage);
+      if (details) filesToDelete.push(details);
+    }
+
+    posterUrls.forEach((url: string) => {
+      const details = extractFileDetails(url);
+      if (details) filesToDelete.push(details);
+    });
+
+    if (filesToDelete.length > 0) {
+      // Group files by bucket
+      const filesByBucket = filesToDelete.reduce((acc, file) => {
+        if (!acc[file.bucket]) {
+          acc[file.bucket] = [];
+        }
+        acc[file.bucket].push(file.path);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      // Delete from each bucket
+      for (const [bucket, paths] of Object.entries(filesByBucket)) {
+        const { error: storageError } = await adminClient
+          .storage
+          .from(bucket)
+          .remove(paths);
+        
+        if (storageError) {
+          console.error(`Error deleting files from bucket ${bucket}:`, storageError);
+        }
+      }
+    }
+
+    // 7. Delete CCA from MongoDB
     await CCA.findByIdAndDelete(id);
 
     return NextResponse.json(
-      { success: true, message: 'CCA and associated admin account deleted successfully' },
+      { success: true, message: 'CCA and all associated data deleted successfully' },
       { status: 200 }
     );
   } catch (error: any) {
