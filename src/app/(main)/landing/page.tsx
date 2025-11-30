@@ -16,7 +16,93 @@ export default async function Landing() {
     .order('date', { ascending: true })
     .limit(6);
 
-  const upcomingEvents = eventsData || [];
+  let upcomingEvents: any[] = eventsData || [];
+
+  // Enrich events with CCA names and registration counts
+  if (upcomingEvents.length > 0) {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const { default: connectDB } = await import('@/lib/mongoose');
+    const { default: CCA } = await import('@/models/CCA');
+
+    await connectDB();
+    const adminSupabase = createAdminClient();
+
+    const eventIds = upcomingEvents.map(e => e.id);
+    const ccaIds = [...new Set(upcomingEvents.map(e => e.cca_id))];
+
+    // Parallel fetch: CCA names and Attendance Counts
+    const [ccaMap, registrationCounts] = await Promise.all([
+      // 1. Fetch CCA names
+      (async () => {
+        const map = new Map();
+        if (ccaIds.length > 0) {
+          const ccas = await CCA.find({ _id: { $in: ccaIds } }).lean();
+          ccas.forEach((c: any) => {
+            map.set(c._id.toString(), c.name);
+          });
+        }
+        return map;
+      })(),
+
+      // 2. Fetch Registration Counts (using Admin Client)
+      (async () => {
+        const map = new Map();
+        if (eventIds.length > 0) {
+          try {
+            // Get all attendance records for these events
+            const { data: allAttendance } = await adminSupabase
+              .from('attendance')
+              .select('event_id, user_id')
+              .in('event_id', eventIds);
+              
+            if (allAttendance && allAttendance.length > 0) {
+              // Get all unique user IDs involved
+              const allUserIds = [...new Set(allAttendance.map((a: any) => a.user_id))];
+              
+              // Fetch valid students from these users
+              const { data: validStudents } = await adminSupabase
+                .from('student_details')
+                .select('user_id')
+                .in('user_id', allUserIds);
+                
+              const validUserSet = new Set((validStudents || []).map((s: any) => s.user_id));
+              
+              // Group by event and count unique valid users
+              const eventUserMap = new Map<string, Set<string>>();
+              
+              allAttendance.forEach((a: any) => {
+                if (validUserSet.has(a.user_id)) {
+                  if (!eventUserMap.has(a.event_id)) {
+                    eventUserMap.set(a.event_id, new Set());
+                  }
+                  eventUserMap.get(a.event_id)?.add(a.user_id);
+                }
+              });
+              
+              eventUserMap.forEach((users, eventId) => {
+                map.set(eventId, users.size);
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching counts:', error);
+          }
+        }
+        return map;
+      })()
+    ]);
+
+    // Map data back to events
+    upcomingEvents = upcomingEvents.map(event => {
+      const currentRegistrations = registrationCounts.get(event.id) || 0;
+      return {
+        ...event,
+        cca_name: ccaMap.get(event.cca_id) || 'Unknown CCA',
+        current_registrations: currentRegistrations,
+        spots_remaining: event.max_attendees ? event.max_attendees - currentRegistrations : null,
+        is_full: event.max_attendees ? currentRegistrations >= event.max_attendees : false
+      };
+    });
+  }
 
   return (
     <>
@@ -105,16 +191,16 @@ export default async function Landing() {
                       key={event.id}
                       id={event.id}
                       title={event.title}
-                      cca_name="CCA"
+                      cca_name={event.cca_name}
                       date={event.date}
                       start_time={event.start_time}
                       end_time={event.end_time}
                       location={event.location}
                       poster_url={event.poster_url}
                       max_attendees={event.max_attendees}
-                      current_registrations={0}
-                      spots_remaining={event.max_attendees}
-                      is_full={false}
+                      current_registrations={event.current_registrations}
+                      spots_remaining={event.spots_remaining}
+                      is_full={event.is_full}
                       status={event.status}
                     />
                   ))}

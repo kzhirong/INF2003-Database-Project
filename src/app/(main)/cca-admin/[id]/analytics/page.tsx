@@ -67,17 +67,6 @@ export default function AnalyticsPage({
   return (
     <>
       <main className="px-4 sm:px-8 md:px-16 lg:px-24 py-8">
-        {/* Breadcrumb */}
-        <div className="text-sm text-gray-500 mb-6">
-          <span
-            className="hover:text-[#F44336] cursor-pointer"
-            onClick={() => router.push(`/cca-admin/${ccaId}`)}
-          >
-            DASHBOARD
-          </span>
-          <span className="mx-2">|</span>
-          <span className="text-gray-900 font-semibold">ANALYTICS</span>
-        </div>
 
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">

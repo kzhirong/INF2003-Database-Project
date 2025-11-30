@@ -164,19 +164,16 @@ export default function Dashboard() {
           .filter((id) => id !== null);
 
         if (eventIds.length > 0) {
-          // Fetch event details
-          const { data: events, error: eventsError } = await supabase
-            .from('events')
-            .select('*')
-            .in('id', eventIds)
-            .gte('date', new Date().toISOString())
-            .eq('status', 'published')
-            .order('date', { ascending: true })
-            .limit(3);
+          // Fetch enriched event details from API
+          const response = await fetch(`/api/events?ids=${eventIds.join(',')}&upcoming=true&limit=3`);
+          const result = await response.json();
 
-          if (eventsError) throw eventsError;
-
-          setUpcomingEvents(events || []);
+          if (result.success) {
+            setUpcomingEvents(result.data);
+          } else {
+            console.error('Failed to fetch events:', result.error);
+            setUpcomingEvents([]);
+          }
         } else {
           setUpcomingEvents([]);
         }
@@ -184,7 +181,7 @@ export default function Dashboard() {
         setUpcomingEvents([]);
       }
     } catch (error) {
-      console.error('Error fetching upcoming events:', JSON.stringify(error, null, 2));
+      console.error('Error fetching upcoming events:', error);
       setUpcomingEvents([]);
     }
   };
@@ -299,7 +296,7 @@ export default function Dashboard() {
                       href="/ccas"
                       className="px-4 py-2 bg-[#F44336] text-white text-sm font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors flex items-center gap-2"
                     >
-                      View All
+                      View All CCAs
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6"></polyline>
                       </svg>
@@ -341,7 +338,7 @@ export default function Dashboard() {
                       href="/events?filter=registered"
                       className="px-4 py-2 bg-[#F44336] text-white text-sm font-semibold rounded-lg hover:bg-[#D32F2F] transition-colors flex items-center gap-2"
                     >
-                      View All
+                      View All Events
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6"></polyline>
                       </svg>

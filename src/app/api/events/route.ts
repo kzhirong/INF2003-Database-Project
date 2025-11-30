@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
 
+    const ids = searchParams.get('ids'); // Comma-separated IDs
+
     const supabase = await createClient();
 
     const upcoming = searchParams.get('upcoming') === 'true';
@@ -22,6 +24,13 @@ export async function GET(request: NextRequest) {
       .from('events')
       .select('*', { count: 'exact' })
       .eq('status', status);
+
+    if (ids) {
+      const idList = ids.split(',').filter(Boolean);
+      if (idList.length > 0) {
+        query = query.in('id', idList);
+      }
+    }
 
     if (upcoming) {
       query = query.gte('date', new Date().toISOString()).order('date', { ascending: true });
