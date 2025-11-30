@@ -49,9 +49,11 @@ export default function ProfileSettingsModal({ isOpen, onClose, user, onProfileU
                 throw new Error(data.error || "Failed to upload image");
             }
 
-            // Close modal and trigger update
+            // Close modal
             onClose();
-            onProfileUpdate('image');
+
+            // Force hard reload to ensure image cache is busted and UI updates
+            window.location.href = "/dashboard?success=image";
 
             // Clear the file input
             if (fileInputRef.current) {
