@@ -104,7 +104,7 @@ export async function getUserData(): Promise<UserData | null> {
     else if (userData.role === 'student') {
       const { data: studentData } = await supabase
         .from("student_details")
-        .select("name, student_id, course, year_of_study, phone_number")
+        .select("name, student_id, phone_number")
         .eq("user_id", user.id)
         .single();
 
