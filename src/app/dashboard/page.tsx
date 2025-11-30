@@ -8,6 +8,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
+import { getUserData } from "@/lib/auth";
 
 interface MyCCA {
   id: string;
@@ -67,15 +68,11 @@ export default function Dashboard() {
 
     setUser(user);
 
-    // Fetch user details
-    const { data, error: userError } = await supabase
-      .from("users")
-      .select("*, student_details(*)")
-      .eq("id", user.id)
-      .single();
+    // Fetch user details using centralized function
+    const data = await getUserData();
 
-    if (userError || !data) {
-      console.error("Error fetching user data:", userError);
+    if (!data) {
+      console.error("Error fetching user data");
       router.push("/");
       return;
     }
@@ -86,15 +83,8 @@ export default function Dashboard() {
     if (data.role === "system_admin") {
       router.push("/admin");
     } else if (data.role === "cca_admin") {
-      // Get CCA ID from cca_admin_details
-      const { data: adminData } = await supabase
-        .from("cca_admin_details")
-        .select("cca_id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (adminData?.cca_id) {
-        router.push(`/cca-admin/${adminData.cca_id}`);
+      if (data.cca_id) {
+        router.push(`/cca-admin/${data.cca_id}`);
       }
     }
   };
@@ -214,9 +204,9 @@ export default function Dashboard() {
     );
   }
 
-  const userFullName = (userData.student_details as any)?.[0]?.name || userData.email || "Student";
+  const userFullName = userData.name || userData.email || "Student";
   const userEmail = user.email || "";
-  const userInitials = getInitials((userData.student_details as any)?.[0]?.name);
+  const userInitials = getInitials(userData.name);
 
   return (
     <div className="min-h-screen bg-[#FAFBFD]">
