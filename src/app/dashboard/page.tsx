@@ -8,7 +8,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
-import { getUserData } from "@/lib/auth";
 
 interface MyCCA {
   id: string;
@@ -202,9 +201,9 @@ export default function Dashboard() {
     );
   }
 
-  const userFullName = userData.name || userData.email || "Student";
+  const userFullName = (userData.student_details as any)?.[0]?.name || userData.email || "Student";
   const userEmail = user.email || "";
-  const userInitials = getInitials(userData.name);
+  const userInitials = getInitials((userData.student_details as any)?.[0]?.name);
 
   return (
     <div className="min-h-screen bg-[#FAFBFD]">
