@@ -31,18 +31,36 @@ export async function GET(
     await connectDB();
     const cca = await CCA.findById(event.cca_id).lean();
 
-    // Get registration count directly from attendance table
-    const { count: currentRegistrations } = await supabase
+    // Get registration count - count distinct valid students using Admin Client to bypass RLS
+    // Import admin client creator dynamically
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const adminSupabase = createAdminClient();
+
+    const { data: attendanceRecords } = await adminSupabase
       .from('attendance')
-      .select('*', { count: 'exact', head: true })
+      .select('user_id')
       .eq('event_id', event.id);
+    
+    let currentRegistrations = 0;
+    
+    if (attendanceRecords && attendanceRecords.length > 0) {
+      const uniqueUserIds = [...new Set(attendanceRecords.map((a: any) => a.user_id))];
+      
+      // Check which users are valid students
+      const { count } = await adminSupabase
+        .from('student_details')
+        .select('user_id', { count: 'exact', head: true })
+        .in('user_id', uniqueUserIds);
+        
+      currentRegistrations = count || 0;
+    }
 
     // Calculate spots remaining and is_full
     const spotsRemaining = event.max_attendees 
-      ? event.max_attendees - (currentRegistrations || 0)
+      ? event.max_attendees - currentRegistrations
       : null;
     const isFull = event.max_attendees 
-      ? (currentRegistrations || 0) >= event.max_attendees
+      ? currentRegistrations >= event.max_attendees
       : false;
 
     // Check if current user is registered

@@ -3,7 +3,6 @@
 import { use, useEffect, useState } from 'react';
 import { redirect, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import NavbarClient from '@/components/NavbarClient';
 import { getUserData } from '@/lib/auth';
 import type { EventWithDetails } from '@/types/event';
 
@@ -98,33 +97,27 @@ export default function EventDetailPage({
 
   if (!userData || loading) {
     return (
-      <div className="min-h-screen bg-[#FAFBFD]">
-        <NavbarClient />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F44336]"></div>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F44336]"></div>
       </div>
     );
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-[#FAFBFD]">
-        <NavbarClient />
-        <main className="px-4 sm:px-8 md:px-16 lg:px-24 py-8">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Event not found
-            </h2>
-            <button
-              onClick={() => router.push('/events')}
-              className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F]"
-            >
-              Back to Events
-            </button>
-          </div>
-        </main>
-      </div>
+      <main className="px-4 sm:px-8 md:px-16 lg:px-24 py-8">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Event not found
+          </h2>
+          <button
+            onClick={() => router.push('/events')}
+            className="px-6 py-3 bg-[#F44336] text-white font-semibold rounded-lg hover:bg-[#D32F2F]"
+          >
+            Back to Events
+          </button>
+        </div>
+      </main>
     );
   }
 
@@ -151,10 +144,7 @@ export default function EventDetailPage({
     !eventPassed;
 
   return (
-    <div className="min-h-screen bg-[#FAFBFD]">
-      <NavbarClient />
-
-      <main className="px-4 sm:px-8 md:px-16 lg:px-24 py-8">
+    <main className="px-4 sm:px-8 md:px-16 lg:px-24 py-8">
         {/* Breadcrumb */}
         <div className="text-sm text-gray-500 mb-6">
           <span
@@ -437,6 +427,5 @@ export default function EventDetailPage({
           </div>
         </div>
       </main>
-    </div>
   );
 }

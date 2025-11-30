@@ -83,7 +83,8 @@ export async function GET(
     // Enrich with student details (now includes user data from join)
     const enrichedAttendance = (attendanceRecords || []).map((record: any) => {
       const student = studentMap.get(record.user_id);
-      const user = (student?.users as any)?.[0];
+      // The users field is an object, not an array when using !inner
+      const user = student?.users;
 
       return {
         id: record.id,

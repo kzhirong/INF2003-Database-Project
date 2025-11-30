@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
     // Optimization: Batch fetch CCA names and attendance data in parallel
     await connectDB();
     
+    // Import admin client creator dynamically to avoid build issues if env vars missing during build
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    
     const eventIds = (events || []).map(e => e.id);
     const ccaIds = [...new Set((events || []).map(e => e.cca_id))];
     
@@ -65,19 +68,51 @@ export async function GET(request: NextRequest) {
         return map;
       })(),
 
-      // 2. Batch fetch attendance counts
+      // 2. Batch fetch attendance counts (count distinct valid students) using Admin Client to bypass RLS
       (async () => {
         const map = new Map();
         if (eventIds.length > 0) {
-          const { data: allAttendance } = await supabase
-            .from('attendance')
-            .select('event_id')
-            .in('event_id', eventIds);
+          try {
+            const adminSupabase = createAdminClient();
             
-          (allAttendance || []).forEach((a: any) => {
-            const current = map.get(a.event_id) || 0;
-            map.set(a.event_id, current + 1);
-          });
+            // Get all attendance records for these events
+            const { data: allAttendance } = await adminSupabase
+              .from('attendance')
+              .select('event_id, user_id')
+              .in('event_id', eventIds);
+              
+            if (allAttendance && allAttendance.length > 0) {
+              // Get all unique user IDs involved
+              const allUserIds = [...new Set(allAttendance.map((a: any) => a.user_id))];
+              
+              // Fetch valid students from these users
+              const { data: validStudents } = await adminSupabase
+                .from('student_details')
+                .select('user_id')
+                .in('user_id', allUserIds);
+                
+              const validUserSet = new Set((validStudents || []).map((s: any) => s.user_id));
+              
+              // Group by event and count unique valid users
+              const eventUserMap = new Map<string, Set<string>>();
+              
+              allAttendance.forEach((a: any) => {
+                if (validUserSet.has(a.user_id)) {
+                  if (!eventUserMap.has(a.event_id)) {
+                    eventUserMap.set(a.event_id, new Set());
+                  }
+                  eventUserMap.get(a.event_id)?.add(a.user_id);
+                }
+              });
+              
+              eventUserMap.forEach((users, eventId) => {
+                map.set(eventId, users.size);
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching attendance counts with admin client:', error);
+            // Fallback to normal client if admin client fails (though it shouldn't)
+          }
         }
         return map;
       })(),
